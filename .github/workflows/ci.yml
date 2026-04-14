@@ -21,13 +21,11 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - run: pnpm typecheck
-        continue-on-error: true  # relax during v0.1 skeleton phase
+      - name: Build all packages and apps
+        run: pnpm -r build
 
-      - run: pnpm build
-        continue-on-error: true
-
-      - run: pnpm test
-        continue-on-error: true
+      - name: Run tests
+        run: pnpm -r test
