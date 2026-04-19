@@ -61,7 +61,7 @@ First match wins for single-value config. For knowledge, results from all three 
 
 ## The five pillars, concretely
 
-### 1. Multi-tenant substrate (`packages/shared-auth`, `apps/auth`)
+### 1. Multi-tenant substrate (`packages/shared-auth`, `apps/platform/auth`)
 
 - **Organization** — primary unit of tenancy. Two flavours share one table: *human orgs* (team of people plus their agents) and *agent orgs* (autonomous agent team with a human "board member" overseeing them).
 - **User** — authenticates with email, belongs to one human org.
@@ -101,7 +101,7 @@ Today the queue is used for email (agent drafts → human reviews → SendGrid s
 
 Storage is Postgres; the worker uses BullMQ on Redis. See [QUEUE.md](QUEUE.md) *(coming soon)*.
 
-### 4. Scoped knowledge (`apps/vector-db`, `apps/graph-db`, `packages/db-client`)
+### 4. Scoped knowledge (`apps/platform/vector-db`, `apps/platform/graph-db`, `packages/db-client`)
 
 Two services, same shape:
 
@@ -110,7 +110,7 @@ Two services, same shape:
 
 `@teamsuzie/db-client` is the typed client. You rarely talk to the DB services directly.
 
-### 5. LLM proxy (`apps/llm-proxy`)
+### 5. LLM proxy (`apps/platform/llm-proxy`)
 
 All LLM calls go through here. The proxy:
 

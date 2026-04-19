@@ -21,4 +21,4 @@ See `docs/DESIGN_SYSTEM.md` and `docs/UI_COMPONENTS.md` *(coming in v0.2)* for t
 
 ## Status
 
-v0.1 — being extracted.
+Available in OSS as a standalone package. The first in-repo consumer will be the admin app.

@@ -1,0 +1,278 @@
+:root {
+  color-scheme: light;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #1c1b18;
+  background:
+    radial-gradient(circle at top left, rgba(199, 132, 78, 0.18), transparent 28%),
+    linear-gradient(180deg, #f7f1e7 0%, #efe4d2 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+code {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: rgba(92, 59, 37, 0.08);
+  border-right: 1px solid rgba(92, 59, 37, 0.14);
+}
+
+.eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8b5e3c;
+}
+
+.sidebar h1,
+.chat-header h2,
+.panel h2 {
+  margin: 0;
+}
+
+.lede,
+.muted {
+  margin: 0;
+  color: #6d5d4d;
+}
+
+.panel {
+  padding: 1rem;
+  border: 1px solid rgba(92, 59, 37, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 250, 242, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.agent-button {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  border: 1px solid rgba(92, 59, 37, 0.12);
+  border-radius: 14px;
+  background: white;
+  padding: 0.85rem 0.9rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.agent-button.selected {
+  border-color: #b86d32;
+  box-shadow: 0 0 0 3px rgba(184, 109, 50, 0.12);
+}
+
+.agent-button strong,
+.agent-button small {
+  display: block;
+}
+
+.agent-button small {
+  color: #7b6a59;
+}
+
+.agent-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  flex: none;
+}
+
+.agent-dot.running {
+  background: #3b9c68;
+}
+
+.agent-dot.stopped {
+  background: #c75a4a;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.82rem;
+  background: #e5ddd0;
+  color: #5a4b3d;
+}
+
+.status-processing {
+  background: #efe0b8;
+}
+
+.status-ready {
+  background: #d6ead8;
+}
+
+.status-error {
+  background: #f1d2cc;
+}
+
+.chat-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+}
+
+.chat-header,
+.composer {
+  padding: 1.25rem 1.5rem;
+  background: rgba(255, 250, 242, 0.75);
+  backdrop-filter: blur(10px);
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(92, 59, 37, 0.1);
+}
+
+.message-list {
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.message {
+  max-width: 760px;
+  padding: 1rem 1.1rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(92, 59, 37, 0.1);
+}
+
+.message.user {
+  align-self: flex-end;
+  background: #b86d32;
+  color: white;
+}
+
+.message.assistant {
+  align-self: flex-start;
+}
+
+.message-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+  margin-bottom: 0.4rem;
+}
+
+.message-body {
+  white-space: pre-wrap;
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  color: #7b6a59;
+}
+
+.composer {
+  border-top: 1px solid rgba(92, 59, 37, 0.1);
+}
+
+.composer textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  border-radius: 18px;
+  border: 1px solid rgba(92, 59, 37, 0.15);
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.composer-actions {
+  margin-top: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.primary-button,
+.secondary-button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.8rem 1.1rem;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: #1f6f5f;
+  color: white;
+}
+
+.secondary-button {
+  background: rgba(92, 59, 37, 0.08);
+  color: #5a4b3d;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.composer textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 960px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid rgba(92, 59, 37, 0.14);
+  }
+}

@@ -31,4 +31,4 @@ const modelName = await config.get('llm.default_model', {
 
 ## Status
 
-v0.1 — being extracted.
+Available in OSS as a standalone package. The admin app remains the write path for config changes.

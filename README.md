@@ -4,7 +4,7 @@
 
 Agent runtimes give you execution. Team Suzie gives you the business context agents need to operate inside real organizations: skills, workspaces, approval queues, multi-tenant auth, and scoped knowledge bases. The proven integration today is [OpenClaw](https://github.com/openclaw); LangGraph, CrewAI, and other runtimes are target adapters on the roadmap.
 
-> **Phase 1 (today — v0.1):** The five pillars ship as **runnable, tested TypeScript packages**. Ten packages and services build clean; 66 tests pass. What's not here yet: the admin UI, a first-party demo agent, and application-level integrations (email dispatcher, DB-backed approval store, first-party skills that talk to real APIs).
+> **Phase 1 (today — v0.1):** The five pillars ship as **runnable, tested TypeScript packages**. Fifteen packages and services build clean; 113 tests pass. What's not here yet: a full admin control plane, a first-party demo agent, and application-level integrations (email dispatcher, DB-backed approval store, first-party skills that talk to real APIs).
 >
 > **Phase 2+ (coming weeks — v0.2 through v0.4):** admin UI, reference dispatchers (email approvals, webhooks), first-party skills, demo agent, and durable storage for the approval queue. When all phases land, the OSS repo covers the core of what's running on [teamsuzie.com](https://teamsuzie.com) — minus the commercial layer (billing, paid-skill marketplace, managed OAuth, hosted orchestration), which stays in the hosted product. See [ROADMAP](docs/ROADMAP.md) for exact phasing.
 >
@@ -43,7 +43,7 @@ git clone https://github.com/firelex/teamsuzie
 cd teamsuzie
 pnpm install
 pnpm -r build         # all packages + apps build clean
-pnpm -r test          # 66 tests green
+pnpm -r test          # 113 tests green
 ```
 
 To stand up the backend services locally:
@@ -57,7 +57,7 @@ pnpm dev:vector-db    # :3006
 pnpm dev:graph-db     # :3007
 ```
 
-There is no UI to point a browser at yet — the services are REST APIs you build against. A `curl`-driven tour of the pillars lives in [docs/QUICKSTART.md](docs/QUICKSTART.md). A graphical admin and an end-to-end demo agent are the lead items for v0.3.
+There is now a minimal browser-based admin chat console for exercising OpenClaw-compatible agents. Broader management surfaces are still coming; today the rest of the stack is primarily REST APIs you build against. A `curl`-driven tour of the backend pillars lives in [docs/QUICKSTART.md](docs/QUICKSTART.md).
 
 ## Architecture
 
@@ -94,10 +94,18 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 | `@teamsuzie/approvals` | Approval queue state machine with pluggable store & dispatchers + 18 tests | ✅ |
 | `@teamsuzie/db-client` | Typed clients for vector-db and graph-db services | ✅ |
 | `@teamsuzie/usage-tracker` | Redis-backed LLM usage event publisher | ✅ |
-| `@teamsuzie/config-client` | Scoped config resolver | v0.2 |
-| `@teamsuzie/ui` | shadcn/ui component library (lands with admin) | v0.3 |
+| `@teamsuzie/config-client` | Scoped config resolver | ✅ |
+| `@teamsuzie/ui` | Shared React component library for admin and example apps | ✅ |
 
 ## Apps
+
+Repository layout:
+
+```text
+apps/platform  # core services and admin shell
+apps/starters  # starter templates and demos
+apps/agents    # capability services like pptx/xlsx generation
+```
 
 | App | Port | Purpose | v0.1 |
 |---|---|---|:---:|
@@ -105,7 +113,11 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 | `llm-proxy` | 4000 | LLM routing with usage tracking + 28 tests | ✅ |
 | `vector-db` | 3006 | Scoped Milvus vector search | ✅ |
 | `graph-db` | 3007 | Scoped Neo4j graph queries | ✅ |
-| `admin` | 3008 | Org / agent / skill management UI | v0.3 |
+| `pptx-agent` | 3009 | LLM-powered PowerPoint generation service | ✅ |
+| `xlsx-agent` | 3012 | LLM-powered spreadsheet generation service | ✅ |
+| `admin` | 3008 | Minimal admin shell + browser chat console | ✅ |
+| `starter-chat` | 16311 | Generic full-stack chat starter for OpenAI-compatible backends | ✅ |
+| `starter-chat-openclaw` | 14311 | Minimal full-stack chatbot starter for OpenClaw-compatible runtimes | ✅ |
 | `demo` | — | Minimal example agent wired to all of the above | v0.3 |
 
 ## License

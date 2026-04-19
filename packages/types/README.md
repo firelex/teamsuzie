@@ -6,8 +6,8 @@ Shared TypeScript types used across every package and app in Team Suzie.
 
 - `Scope`, `ScopeRef`, `ScopedEntity` — the multi-tenancy primitives. Every piece of state in the system carries one of these.
 - `AgentContext` — the request context passed to any code running on behalf of an agent (agent id, org id, scope chain, API key claims).
-- `VectorSearchRequest`, `VectorSearchResult` — wire types for `apps/vector-db`.
-- `GraphEntityRequest`, `GraphSearchResult` — wire types for `apps/graph-db`.
+- `VectorSearchRequest`, `VectorSearchResult` — wire types for `apps/platform/vector-db`.
+- `GraphEntityRequest`, `GraphSearchResult` — wire types for `apps/platform/graph-db`.
 
 ## Design notes
 

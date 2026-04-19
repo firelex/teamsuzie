@@ -62,7 +62,7 @@ Open the admin UI at [http://localhost:3008](http://localhost:3008). Sign up wit
 ## 6. Run the demo agent
 
 ```bash
-cd apps/demo
+cd apps/starters/demo
 cp .env.example .env   # paste the agent API key into AGENT_API_KEY
 pnpm dev
 ```

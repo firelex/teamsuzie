@@ -65,5 +65,5 @@ v0.1 — **runnable.** Headless skill discovery, rendering, and filesystem deliv
 in and tested. Ships with one reference skill (`hello-world`) in `templates/`.
 
 First-party skills that target real services (email & calendar, inter-agent messaging,
-token usage, etc.) depend on `apps/admin` being extracted first — tracked in the
+token usage, etc.) depend on `apps/platform/admin` being extracted first — tracked in the
 roadmap under v0.3.

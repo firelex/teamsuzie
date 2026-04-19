@@ -11,20 +11,20 @@ Goal: repo layout and positioning published so the direction is legible. **This 
 - [x] Docker Compose for local infrastructure (Postgres, Redis, Milvus, Neo4j)
 - [ ] `packages/types` — shared scope and agent context types
 - [ ] `packages/shared-auth` — org/user/agent models (billing stripped)
-- [ ] `apps/auth` — session-based auth service
-- [ ] `apps/llm-proxy` — provider-agnostic LLM router with usage tracking
+- [ ] `apps/platform/auth` — session-based auth service
+- [ ] `apps/platform/llm-proxy` — provider-agnostic LLM router with usage tracking
 
 ## v0.2 — Runnable end-to-end
 
 Goal: `pnpm install && pnpm docker:up && pnpm dev` produces a working multi-tenant stack a developer can build on.
 
-- [x] `apps/vector-db` — Milvus REST wrapper with scope support
-- [x] `apps/graph-db` — Neo4j REST wrapper with scope support
+- [x] `apps/platform/vector-db` — Milvus REST wrapper with scope support
+- [x] `apps/platform/graph-db` — Neo4j REST wrapper with scope support
 - [x] `packages/db-client` — typed clients for both DB services
 - [x] `packages/usage-tracker` — Redis-backed usage event publisher
 - [ ] `packages/config-client` — scoped config resolver
-- [ ] `apps/admin` — slim admin UI (org / agent / config / skill management)
-- [ ] `apps/demo` — minimal example agent wired through the full stack
+- [ ] `apps/platform/admin` — slim admin UI (org / agent / config / skill management)
+- [ ] `apps/starters/demo` — minimal example agent wired through the full stack
 - [ ] CI green on fresh clone (builds + unit tests green today; integration coverage pending)
 
 ## v0.3 — Skill runtime — first-party skills + admin integration

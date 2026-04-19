@@ -7,8 +7,8 @@ Thanks for your interest. Team Suzie is in early OSS days (v0.1), so the contrib
 **Welcome:**
 - Bug reports with reproductions.
 - Documentation improvements.
-- Adapters for additional LLM providers in `apps/llm-proxy`.
-- Adapters for additional vector / graph backends in `apps/vector-db` and `apps/graph-db`.
+- Adapters for additional LLM providers in `apps/platform/llm-proxy`.
+- Adapters for additional vector / graph backends in `apps/platform/vector-db` and `apps/platform/graph-db`.
 - New skill templates in `packages/skills`.
 - Approval-queue consumers beyond email.
 

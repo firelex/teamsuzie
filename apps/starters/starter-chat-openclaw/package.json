@@ -1,0 +1,25 @@
+{
+  "name": "@teamsuzie/starter-chat-openclaw",
+  "version": "0.1.0",
+  "description": "Minimal starter chatbot for OpenClaw-compatible agents",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts & pnpm --filter @teamsuzie/starter-chat-openclaw-client dev & wait",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.0",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

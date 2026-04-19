@@ -30,15 +30,15 @@ The ships-by-default email dispatcher (SendGrid) is a reference implementation.
 
 The LLM proxy has a provider adapter interface. To add a new provider:
 
-1. Implement `LLMProvider` from `apps/llm-proxy/src/providers/types.ts`.
-2. Register it in `apps/llm-proxy/src/providers/index.ts`.
+1. Implement `LLMProvider` from `apps/platform/llm-proxy/src/providers/types.ts`.
+2. Register it in `apps/platform/llm-proxy/src/providers/index.ts`.
 3. Configure via env or the admin UI's config panel.
 
 Usage tracking is automatic — it hooks the response stream, not the provider.
 
 ## 4. Vector and graph backends
 
-Both `apps/vector-db` and `apps/graph-db` wrap a concrete backend behind an HTTP API. To swap the backend:
+Both `apps/platform/vector-db` and `apps/platform/graph-db` wrap a concrete backend behind an HTTP API. To swap the backend:
 
 1. Fork the corresponding app.
 2. Replace the Milvus / Neo4j driver usage with your backend of choice.
@@ -48,7 +48,7 @@ The db-client package doesn't care which backend you run — it only sees the HT
 
 ## 5. Auth providers
 
-The `apps/auth` service is session + email-based out of the box. For SSO, OAuth, or SAML:
+The `apps/platform/auth` service is session + email-based out of the box. For SSO, OAuth, or SAML:
 
 1. Add a new route handler alongside the existing `/login` and `/signup`.
 2. On successful external auth, create or find the user via the existing `UserService`.

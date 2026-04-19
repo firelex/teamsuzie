@@ -7,7 +7,7 @@ Multi-tenant auth models, session service, and middleware for Team Suzie.
 - **Models:** `User`, `Organization`, `OrganizationMember`, `Agent`, `AgentProfile`, `AgentWorkspaceFile`, `ApiKey` (Sequelize).
 - **Services:** `SequelizeService` (db connection), `SessionService` (cookie-based sessions), `ApiKeyService` (agent bearer auth).
 - **Middleware:** session auth, CSRF, API key auth, role guards.
-- **Factory:** `createAuthRouter()` — mount-point for the auth routes used by `apps/auth`.
+- **Factory:** `createAuthRouter()` — mount-point for the auth routes used by `apps/platform/auth`.
 
 ## What's explicitly *not* here
 
@@ -16,7 +16,7 @@ Multi-tenant auth models, session service, and middleware for Team Suzie.
 
 ## Extension
 
-- New identity providers (SSO, SAML, OIDC): add a route in `apps/auth` that lands on `SessionService.issue()` once external auth succeeds. The rest of the stack doesn't care how identity was proven.
+- New identity providers (SSO, SAML, OIDC): add a route in `apps/platform/auth` that lands on `SessionService.issue()` once external auth succeeds. The rest of the stack doesn't care how identity was proven.
 - New model fields: add a Sequelize migration; don't hand-edit schema.
 
 ## Status

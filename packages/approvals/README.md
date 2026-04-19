@@ -80,7 +80,7 @@ Implementations shipped:
 - **`InMemoryApprovalStore`** — for tests and demos; non-durable.
 
 A Postgres / Sequelize implementation will ship in whichever app needs durability
-(likely `apps/admin`). Keeping it out of this package means the core has zero DB
+(likely `apps/platform/admin`). Keeping it out of this package means the core has zero DB
 coupling and is usable on any stack.
 
 ## Pluggable dispatchers

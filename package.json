@@ -19,6 +19,12 @@
     "dev:llm-proxy": "pnpm --filter @teamsuzie/llm-proxy dev",
     "dev:vector-db": "pnpm --filter @teamsuzie/vector-db dev",
     "dev:graph-db": "pnpm --filter @teamsuzie/graph-db dev",
+    "dev:pptx-agent": "pnpm --filter @teamsuzie/pptx-agent dev",
+    "test:pptx-agent": "pnpm --filter @teamsuzie/pptx-agent test",
+    "dev:xlsx-agent": "cd apps/agents/xlsx-agent && python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 3012",
+    "test:xlsx-agent": "cd apps/agents/xlsx-agent && python3 -m pytest",
+    "dev:starter-chat": "pnpm --filter @teamsuzie/starter-chat dev",
+    "dev:starter-chat-openclaw": "pnpm --filter @teamsuzie/starter-chat-openclaw dev",
     "dev:admin": "pnpm --filter @teamsuzie/admin dev",
     "dev:demo": "pnpm --filter @teamsuzie/demo dev"
   },

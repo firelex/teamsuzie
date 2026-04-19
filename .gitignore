@@ -40,6 +40,7 @@ venv/
 # Runtime
 .dev-pids/
 *.pid
+output/
 
 # Test coverage
 coverage/
