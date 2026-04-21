@@ -66,6 +66,17 @@ This is the thicker successor to the original "chat-only" admin. It ships phase-
 - Ships four seeded definitions: `admin.title`, `chat.default_model`, `approvals.require_by_default`, `integrations.webhook_secret`
 - Config page: category-grouped cards (platform / ai / service / infrastructure / oauth), per-row status badge (`default` / `system` / `agent`…), `requires-restart` flag, inline Edit or Replace (for secrets), Reset to revert to the definition's default
 
+## Tests
+
+Integration suite lives at `apps/platform/admin/src/__tests__/` — one file per phase, supertest against the real Express app and a throwaway Postgres schema. **46 tests, ~3 seconds.**
+
+```bash
+pnpm docker:up                          # postgres + redis
+pnpm --filter @teamsuzie/admin test     # or: pnpm -r test
+```
+
+The harness (`src/__tests__/setup.ts`) auto-creates the `teamsuzie_test` database on first run, drops & recreates schema on each invocation, and routes Redis sessions under a process-scoped prefix so test runs don't trample each other. Override `TEST_POSTGRES_BASE_URI` / `TEST_POSTGRES_DB` / `TEST_REDIS_URI` if your local infra differs from the defaults.
+
 ## What's coming
 
 | Phase | Surface   | Summary                                                                     |
