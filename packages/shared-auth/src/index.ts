@@ -34,6 +34,19 @@ export { default as RateLimitMiddleware, type RateLimitConfig, type RateLimitOpt
 export { default as AgentAuthMiddleware, type AgentContext, type ScopeRef, type AgentAuthConfig } from './middleware/agent-auth.js';
 export { createServiceAuth, type ServiceAuthConfig } from './middleware/service-auth.js';
 export { SimpleApiKeyAuth, type SimpleApiKeyAuthOptions } from './middleware/simple-api-key-auth.js';
+export { createRequestId, type RequestIdOptions } from './middleware/request-id.js';
+
+// Upload hardening helpers (for when services add file-upload routes).
+export {
+    DEFAULT_UPLOAD_LIMITS,
+    normalizeUploadFilename,
+    extensionAllowed,
+    assertUploadLimits,
+    type UploadLimits,
+} from './utils/upload-guard.js';
+
+// Actor attribution for structured logs and audit trails.
+export { getRequestActor, type RequestActor } from './utils/actor.js';
 
 // Utils
 export { encrypt, decrypt, hashApiKey, generateApiKey, verifyApiKey, generateSecureToken } from './utils/encryption.js';

@@ -10,8 +10,21 @@ declare global {
 }
 
 /**
- * Extract Bearer token from Authorization header and compute SHA256 hash.
- * The hash is used for agent attribution in usage events (matches user_api_key_hash).
+ * LLM-proxy authentication — agent / service bearer lane.
+ *
+ * The proxy is called by agent runtimes (OpenClaw, LangGraph adapters, etc.),
+ * never by a browser. Every request MUST carry `Authorization: Bearer <token>`;
+ * we hash the token and use the hash for per-agent usage attribution downstream.
+ * The token itself is never logged or persisted — only its SHA-256 prefix.
+ *
+ * See docs/SECURITY_MODEL.md for the three-lane auth model.
+ *
+ * This middleware does NOT validate the token against a database — that would
+ * put the DB on the hot path of every LLM call. Validation is delegated to the
+ * ownership of the key (agent runtime holds it, admin manages it); the proxy
+ * trusts whoever has the token. If you need stronger proxy-side validation,
+ * gate the proxy behind a sidecar that performs verification and forwards the
+ * request with a short-lived token.
  */
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
     const authHeader = req.headers.authorization;

@@ -1,3 +1,13 @@
+/**
+ * Simple API-key auth lane.
+ *
+ * A lightweight alternative to `service-auth.ts` for internal endpoints that
+ * want a single shared key without the strict `Bearer` semantics. Intended for
+ * trusted service-to-service calls only — it authenticates the *caller process*,
+ * not a user. Do NOT hand this key out to browser clients or agent runtimes.
+ *
+ * See docs/SECURITY_MODEL.md for the full auth-lane overview.
+ */
 import type { Request, Response, NextFunction } from 'express';
 
 export interface SimpleApiKeyAuthOptions {

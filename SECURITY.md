@@ -38,3 +38,15 @@ When deploying Team Suzie, at minimum:
 - Do not run with the default Postgres / Neo4j passwords from `.env.example`.
 - Put the admin app behind authentication; it exposes privileged config operations.
 - Keep the LLM proxy internal — do not expose it to the public internet without an auth layer.
+- Set `INTERNAL_SERVICE_KEY` to a strong random value in any deployment that runs more than one OSS service, and treat it as tier-0 — anyone with this key can invoke internal-only endpoints.
+
+## Security model documentation
+
+For anyone writing or reviewing code:
+
+- [`docs/SECURITY_MODEL.md`](docs/SECURITY_MODEL.md) — the three auth lanes
+  (browser session, user bearer, agent/service bearer), when to pick each, and
+  how request-id / actor / org attribution works end-to-end.
+- [`docs/UPLOADS.md`](docs/UPLOADS.md) — rules and shared helpers for any
+  file-upload endpoints (OSS ships with none today; this is what you follow
+  when you add one).

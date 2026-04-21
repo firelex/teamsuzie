@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import type { ApprovalQueue } from '@teamsuzie/approvals';
+import { getRequestActor } from '@teamsuzie/shared-auth';
 import { getSession, requireSession } from '../middleware/auth.js';
 
 interface Deps {
@@ -22,6 +23,7 @@ export function createApprovalsRouter({ queue }: Deps): Router {
 
   router.post('/:id/review', async (req: Request<{ id: string }>, res: Response) => {
     const session = getSession(req);
+    const actor = getRequestActor(req);
     const id = req.params.id;
     const { verdict, reason, edited_payload } = req.body ?? {};
     if (verdict !== 'approve' && verdict !== 'reject') {
@@ -40,13 +42,22 @@ export function createApprovalsRouter({ queue }: Deps): Router {
       // Production setups often defer dispatch to a worker instead.
       if (reviewed.status === 'approved') {
         const dispatched = await queue.dispatch(id);
+        console.log(
+          `[ops.approvals.review] dispatched item=${id} verdict=approve actor=${actor.type}:${actor.userId ?? '-'} org=${actor.orgId ?? '-'} req=${actor.requestId ?? '-'}`,
+        );
         res.json({ item: dispatched });
         return;
       }
 
+      console.log(
+        `[ops.approvals.review] item=${id} verdict=${verdict} status=${reviewed.status} actor=${actor.type}:${actor.userId ?? '-'} org=${actor.orgId ?? '-'} req=${actor.requestId ?? '-'}`,
+      );
       res.json({ item: reviewed });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Review failed';
+      console.error(
+        `[ops.approvals.review] fail item=${id} verdict=${verdict} actor=${actor.type}:${actor.userId ?? '-'} org=${actor.orgId ?? '-'} req=${actor.requestId ?? '-'} err=${message}`,
+      );
       res.status(400).json({ error: message });
     }
   });

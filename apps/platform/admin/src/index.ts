@@ -14,6 +14,7 @@ import {
   User,
   UserAccessToken,
   createAuthRouter,
+  createRequestId,
 } from '@teamsuzie/shared-auth';
 import type { ModelCtor } from 'sequelize-typescript';
 import { config, sharedAuthConfig } from './config.js';
@@ -29,6 +30,7 @@ const clientDistDir = path.resolve(__dirname, '../client/dist');
 
 async function main() {
   const app = express();
+  app.use(createRequestId());
   app.use(cors({ origin: config.allowedOrigin, credentials: true }));
   app.use(express.json({ limit: '2mb' }));
 

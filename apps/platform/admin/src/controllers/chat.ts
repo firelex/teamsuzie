@@ -3,6 +3,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import type { IncomingMessage, Server } from 'node:http';
 import type { Socket } from 'node:net';
 import { randomUUID } from 'node:crypto';
+import { getRequestActor } from '@teamsuzie/shared-auth';
 import { ChatProxyService, type ChatMessage } from '../services/chat-proxy.js';
 
 interface ChatWebSocket extends WebSocket {
@@ -178,11 +179,18 @@ export class ChatController {
     }
   }
 
-  listAgents = async (_req: Request, res: Response): Promise<void> => {
+  listAgents = async (req: Request, res: Response): Promise<void> => {
+    const actor = getRequestActor(req);
     try {
       const agents = await this.chatProxyService.listAgents();
+      console.log(
+        `[admin.chat.listAgents] ok actor=${actor.type}:${actor.userId ?? '-'} org=${actor.orgId ?? '-'} req=${actor.requestId ?? '-'} count=${agents.length}`,
+      );
       res.json({ agents });
     } catch (error) {
+      console.error(
+        `[admin.chat.listAgents] fail actor=${actor.type}:${actor.userId ?? '-'} org=${actor.orgId ?? '-'} req=${actor.requestId ?? '-'} err=${error instanceof Error ? error.message : String(error)}`,
+      );
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Failed to list agents',
       });

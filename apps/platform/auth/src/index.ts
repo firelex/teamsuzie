@@ -9,6 +9,7 @@ import {
     SequelizeService, SessionService, CsrfMiddleware,
     User, Organization, OrganizationMember, Agent, AgentProfile, UserAccessToken,
     createAuthRouter,
+    createRequestId,
     type SharedAuthConfig
 } from '@teamsuzie/shared-auth';
 import type { ModelCtor } from 'sequelize-typescript';
@@ -28,6 +29,7 @@ const sharedAuthConfig: SharedAuthConfig = {
 };
 
 // Middleware
+app.use(createRequestId());
 app.use(helmet());
 app.use(cors({
     origin: config.cors_origins,

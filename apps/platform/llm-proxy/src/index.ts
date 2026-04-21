@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { loadKeysFromEnv } from './config.js';
 import { initUsagePublisher } from './services/usage.js';
+import { requestIdMiddleware } from './middleware/request-id.js';
 import healthRouter from './routes/health.js';
 import keysRouter from './routes/keys.js';
 import completionsRouter from './routes/completions.js';
@@ -14,6 +15,7 @@ const PORT = parseInt(process.env.PORT || '4000', 10);
 const REDIS_URL = process.env.REDIS_URL || process.env.REDIS_URI || 'redis://localhost:6379';
 
 const app = express();
+app.use(requestIdMiddleware);
 app.use(express.json({ limit: '10mb' }));
 
 // Load provider keys from environment
@@ -44,6 +46,8 @@ app.listen(PORT, () => {
                 headers: {
                     'Content-Type': 'application/json',
                     'x-service-key': serviceKey,
+                    // Tag startup sync with an id so an operator can trace it end-to-end.
+                    'x-request-id': `llm-proxy-startup-${Date.now()}`,
                 },
                 body: '{}',
             })

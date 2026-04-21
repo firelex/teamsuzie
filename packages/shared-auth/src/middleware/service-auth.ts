@@ -6,8 +6,15 @@ export interface ServiceAuthConfig {
 }
 
 /**
- * Middleware for service-to-service authentication using a shared secret.
- * Used by internal services to authenticate cross-service API calls.
+ * Service-to-service bearer-token auth lane.
+ *
+ * Used by internal Team Suzie services to authenticate RPC-style calls to each
+ * other (admin ←→ llm-proxy, for example). It is NOT user auth — the key does
+ * not identify a user or org, and routes guarded by this middleware must not
+ * perform actions on a user's behalf. Routes that need an actor use either the
+ * browser-session lane (CSRF-protected) or the agent-bearer lane.
+ *
+ * See docs/SECURITY_MODEL.md for the full security model.
  *
  * Accepts the key via:
  *   - Authorization: Bearer {key}

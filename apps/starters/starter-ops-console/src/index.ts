@@ -6,6 +6,7 @@ import {
   SequelizeService,
   SessionService,
   createAuthRouter,
+  createRequestId,
   User,
   Organization,
   OrganizationMember,
@@ -30,6 +31,7 @@ const clientDistDir = path.resolve(__dirname, '../client/dist');
 
 async function main() {
   const app = express();
+  app.use(createRequestId());
   app.use(cors({ origin: config.allowedOrigin, credentials: true }));
   app.use(express.json({ limit: '2mb' }));
 

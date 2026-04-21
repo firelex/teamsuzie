@@ -148,7 +148,8 @@ function completionToResponse(completion: any, responseId: string, model: string
 
 router.post('/v1/responses', authMiddleware, async (req: Request, res: Response) => {
     const reqStartTime = Date.now();
-    const reqId = `req-${reqStartTime}-${Math.random().toString(36).slice(2, 8)}`;
+    // Prefer the id from requestIdMiddleware so logs correlate across services.
+    const reqId = req.requestId ?? `req-${reqStartTime}-${Math.random().toString(36).slice(2, 8)}`;
     const responseId = `resp_${crypto.randomBytes(12).toString('hex')}`;
 
     try {

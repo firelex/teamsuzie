@@ -1,3 +1,15 @@
+/**
+ * Browser / session auth lane — the CSRF half.
+ *
+ * Pairs with SessionService. Any request that arrives with a session cookie
+ * and no Authorization / X-API-Key must also carry a matching CSRF token,
+ * otherwise a malicious page could forge state-changing requests on the user's
+ * behalf. Requests that authenticate via Authorization / X-API-Key are *not*
+ * subject to CSRF — see the bearer lanes (`agent-auth.ts`, `service-auth.ts`,
+ * `simple-api-key-auth.ts`).
+ *
+ * See docs/SECURITY_MODEL.md for the full picture of the three auth lanes.
+ */
 import Tokens from 'csrf';
 import type { CookieOptions, NextFunction, Response, Request } from 'express';
 import type { SharedAuthConfig } from '../types.js';

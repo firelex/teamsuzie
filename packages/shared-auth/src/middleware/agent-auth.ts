@@ -1,3 +1,21 @@
+/**
+ * Agent / service bearer-token auth lane.
+ *
+ * This middleware handles one of the three auth lanes in Team Suzie OSS —
+ * see docs/SECURITY_MODEL.md for the full picture.
+ *
+ *   Lane           | Credential                          | This middleware?
+ *   ---------------|-------------------------------------|------------------
+ *   Browser session| cookie (HttpOnly, CSRF-protected)   | no (SessionService + CsrfMiddleware)
+ *   User bearer    | UserAccessToken (user-initiated CLI)| no (handled in AuthController)
+ *   Agent bearer   | Agent.api_key (dtk_*) — THIS ONE    | YES
+ *
+ * Use this on routes that an *agent process* — not a human, not a browser —
+ * calls. The agent's API key identifies both the agent and, transitively, the
+ * org the action is being performed in. Do NOT reuse this for user-initiated
+ * browser traffic; that traffic must go through session + CSRF so a malicious
+ * page can't forge requests.
+ */
 import type { Request, Response, NextFunction } from 'express';
 import { Agent } from '../models/agent.js';
 import { User } from '../models/user.js';

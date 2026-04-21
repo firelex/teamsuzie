@@ -11,7 +11,10 @@ const LOG_KEY_FINGERPRINTS = /^(1|true|yes)$/i.test(process.env.LLM_PROXY_LOG_KE
 
 router.post('/v1/chat/completions', authMiddleware, async (req: Request, res: Response) => {
     const reqStartTime = Date.now();
-    const reqId = `req-${reqStartTime}-${Math.random().toString(36).slice(2, 8)}`;
+    // Prefer the id attached by requestIdMiddleware (propagates from the caller
+    // across services). Fall back to a locally-minted id only if something
+    // upstream mounted this route without the middleware.
+    const reqId = req.requestId ?? `req-${reqStartTime}-${Math.random().toString(36).slice(2, 8)}`;
 
     try {
         const body = req.body;
@@ -327,7 +330,9 @@ function emitUsageEvent(req: Request, response: any, provider: string, model: st
         output_units: outputTokens,
         timestamp: new Date().toISOString(),
         metadata: {
-            request_id: response.id || undefined,
+            // Prefer the provider-assigned id (matches the string in their logs);
+            // fall back to our own request id so we can still correlate.
+            request_id: response.id || req.requestId || undefined,
             user_api_key_hash: req.keyHash || '',
             cached_tokens: cachedTokens || undefined,
             cache_creation_tokens: cacheCreationTokens || undefined,
