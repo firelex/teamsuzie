@@ -1,59 +1,76 @@
 # Roadmap
 
-Team Suzie OSS is an extraction from a working private codebase. The roadmap reflects what's already built upstream and what needs refactoring before it can land here.
+Team Suzie OSS is an extraction from a working private codebase. The roadmap reflects what's already built and what's next.
 
 ## v0.1 — Runnable foundations *(current)*
 
-Goal: the pillars ship as runnable, tested TypeScript packages. Ten workspace projects build clean; 66 unit tests pass. The admin UI, demo agent, and first-party application integrations land in later phases — this release is for engineers wiring their own applications on top.
+The pillars ship as runnable, tested TypeScript packages, plus a full admin control plane on top. Ten workspace projects build clean; package-level unit tests and a 52-test admin integration suite run on `pnpm -r test`.
 
 - [x] Repository structure and positioning docs
 - [x] MIT license, contributing guide, security policy
 - [x] Docker Compose for local infrastructure (Postgres, Redis, Milvus, Neo4j)
 - [x] `packages/types` — shared scope and agent context types
-- [x] `packages/shared-auth` — org/user/agent models (billing stripped)
+- [x] `packages/shared-auth` — org/user/agent models, session auth, request-id middleware, upload-guard helpers, actor attribution (billing stripped)
+- [x] `packages/skills` — headless skill runtime with filesystem delivery
+- [x] `packages/approvals` — generic state machine with in-memory store
+- [x] `packages/db-client` — typed clients for vector-db and graph-db
+- [x] `packages/usage-tracker` — Redis-backed usage event publisher
+- [x] `packages/config-client` — scoped config resolver (HTTP client for remote consumers)
+- [x] `packages/ui` — shared React component library (AppShell, Sidebar, DataTable, Dialog, …)
 - [x] `apps/platform/auth` — session-based auth service
 - [x] `apps/platform/llm-proxy` — provider-agnostic LLM router with usage tracking
-
-## v0.2 — Runnable end-to-end
-
-Goal: `pnpm install && pnpm docker:up && pnpm dev` produces a working multi-tenant stack a developer can build on.
-
 - [x] `apps/platform/vector-db` — Milvus REST wrapper with scope support
 - [x] `apps/platform/graph-db` — Neo4j REST wrapper with scope support
-- [x] `packages/db-client` — typed clients for both DB services
-- [x] `packages/usage-tracker` — Redis-backed usage event publisher
-- [ ] `packages/config-client` — scoped config resolver
-- [ ] `apps/platform/admin` — slim admin UI (org / agent / config / skill management)
-- [ ] `apps/starters/demo` — minimal example agent wired through the full stack
-- [ ] CI green on fresh clone (builds + unit tests green today; integration coverage pending)
+- [x] `apps/platform/admin` — full control plane (see below)
+- [x] `apps/starters/starter-chat` — generic OpenAI-compatible chat starter
+- [x] `apps/starters/starter-chat-openclaw` — OpenClaw-oriented chat starter
+- [x] `apps/starters/starter-ops-console` — internal-tool / ops-console starter with approval-gated destructive actions
 
-## v0.3 — Skill runtime — first-party skills + admin integration
+### Admin control plane (shipped across Phases 0–7)
 
-The headless skill runtime (`packages/skills`) landed in v0.1. v0.3 is about shipping
-real first-party skills that do useful things, which depends on the admin app and
-LLM proxy being runnable end-to-end.
+The admin app grew from "chat console" to a real control plane in seven phases. Each landed as a standalone commit with a README entry and is covered by the integration suite.
 
-- [ ] First-party skills: inter-agent messaging, token usage, file access (generic), `hello-world` (already shipped)
-- [ ] DB-backed `SkillTarget` implementation in the admin app (upserts into `AgentWorkspaceFile`)
+- [x] **Phase 0** — routed React shell, session auth, login/logout, Postgres + Redis bootstrap
+- [x] **Phase 1** — agent registry (CRUD, profiles, DB-aware chat proxy)
+- [x] **Phase 2** — skills browse + attach (manifest discovery, `{{TOKEN}}` → required-context extraction)
+- [x] **Phase 3** — approvals inbox (propose/review/dispatch, auto-dispatch for registered action types, `AuditLog` writes)
+- [x] **Phase 4** — text artifacts (upsert on `(agent_id, file_path)`, path-traversal guards, content-type enum)
+- [x] **Phase 5** — tokens (multi-key per agent with scopes, user bearer tokens via shared-auth, cascade delete on agent removal)
+- [x] **Phase 6** — config surface (scoped resolution: `agent → user → org → global → default`, AES-256-GCM at rest, sensitive redaction on HTTP)
+- [x] **Phase 7** — activity & audit feed (paginated audit-log view, actor enrichment, recently-active agents)
+
+## v0.2 — Polish + external integrations
+
+- [ ] `apps/starters/starter-demo` — minimal example agent wired through the full stack
+- [ ] `llm-proxy` → admin activity integration (token counts and tool-call timelines in `/api/activity`; currently admin surfaces `audit_log` + `Agent.last_active_at` only)
+- [ ] `config-client` HTTP consumers exercised from at least one OSS service (admin reads config in-process today)
+- [ ] CI: lint + typecheck + admin integration suite green on fresh clone
 - [ ] Skill authoring guide expanded in `docs/EXTENSION_MODEL.md`
-- [ ] Skill UI in the admin app (browse catalog, install / uninstall per agent)
 
-## v0.4 — Approval queue — durable storage + reference dispatchers
+## v0.3 — First-party skills breadth
 
-The generic state machine and in-memory store shipped in v0.1. v0.4 is about
-making the queue production-viable by adding a durable store and at least one
-first-party dispatcher.
+The headless skill runtime (`packages/skills`) and five shipped skill manifests (`file-access`, `hello-world`, `documents`, `presentations`, `spreadsheets`) landed in v0.1. v0.3 fills out the catalog.
 
-- [ ] Postgres / Sequelize `ApprovalStore` implementation (likely co-located with admin)
-- [ ] Email dispatcher reference implementation (provider-agnostic; SendGrid / Resend / SMTP)
-- [ ] Admin UI: list, review, edit, dispatch approval items
-- [ ] Worker pattern docs (BullMQ or equivalent) for async dispatch
+- [ ] `inter-agent` skill (agent-to-agent messaging primitives)
+- [ ] `token-usage` skill wired through the llm-proxy integration from v0.2
+- [ ] DB-backed `SkillTarget` implementation in admin (upserts into `AgentWorkspaceFile`)
+- [ ] Per-agent skill install / uninstall lifecycle in the UI (today the admin page lists + attaches; full apply/remove on the workspace side lands here)
 
-## v0.5 — Generalization and polish
+## v0.4 — Approval queue, production-grade
 
-- [ ] Generalize approval queue away from email-specific field names
+The generic state machine, in-memory store, inbox UI, and `AuditLog` writes all shipped in v0.1 Phase 3. v0.4 makes the queue durable and ships reference dispatchers.
+
+- [ ] Postgres / Sequelize `ApprovalStore` implementation (currently `InMemoryApprovalStore` — queue resets on admin restart)
+- [ ] Email dispatcher reference (provider-agnostic; SendGrid / Resend / SMTP)
+- [ ] Worker pattern docs (BullMQ or equivalent) for async dispatch outside the request cycle
+- [ ] Bearer-authenticated external propose endpoint with rate limits
+
+## v0.5 — Generalization and extensibility
+
+- [ ] Binary artifact storage — either a blob column on `AgentWorkspaceFile` or an object-storage service (S3-compatible). v0.1 Phase 4 handles text only by design.
+- [ ] Per-scope config editor in the admin UI (agent / user / org overrides — fully supported at the API today)
 - [ ] Pluggable LLM provider adapters (third-party providers via plugins)
-- [ ] Pluggable vector/graph backends (beyond Milvus/Neo4j)
+- [ ] Pluggable vector/graph backends (beyond Milvus / Neo4j)
 - [ ] First external adapter contributions merged
 
 ## Explicitly not planned for OSS

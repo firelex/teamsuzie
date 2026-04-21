@@ -76,7 +76,8 @@ So you don't rebuild any of this:
 - **Skill runtime** — installable capabilities you (or your assistant) drop into an agent's workspace. Composable; no monolithic tool registry.
 - **Approval queue** — a primitive for "agent proposes, human approves." Pluggable dispatchers (email, Slack, webhooks, your call).
 - **Scoped knowledge bases** — vector search (Milvus) + graph (Neo4j) with per-agent / per-org / global scopes.
-- **Chat starters** — the two templates above, already wired for streaming and session handling.
+- **Admin control plane** — a full operator UI: agents, skills, approvals, text artifacts, bearer tokens, runtime config, and an audit-backed activity feed. Every mutation writes an `AuditLog` row and is covered by an integration test suite.
+- **Chat starters** — the three templates above, already wired for streaming and session handling.
 
 You'll use some of these; you won't need to write any of them.
 
@@ -146,7 +147,7 @@ A `curl`-driven tour lives in [docs/QUICKSTART.md](docs/QUICKSTART.md). Full arc
 ### Apps
 
 ```text
-apps/platform  # core services and admin shell
+apps/platform  # core services and the admin control plane
 apps/starters  # starter templates and demos
 apps/agents    # capability services like pptx/xlsx generation
 ```
@@ -159,7 +160,7 @@ apps/agents    # capability services like pptx/xlsx generation
 | `graph-db` | 3007 | Scoped Neo4j graph queries |
 | `pptx-agent` | 3009 | LLM-powered PowerPoint generation |
 | `xlsx-agent` | 3012 | LLM-powered spreadsheet generation |
-| `admin` | 3008 | Minimal admin shell + browser chat console |
+| `admin` | 3008 | Operator control plane — agents, skills, approvals, artifacts, tokens, runtime config, activity feed, and the original browser chat console |
 | `starter-chat` | 16311 | Generic full-stack chat starter |
 | `starter-chat-openclaw` | 14311 | OpenClaw-oriented chat starter |
 | `starter-ops-console` | 18311 | Internal-tool / ops-console starter with approval-gated destructive actions |
