@@ -14,6 +14,7 @@ export { OAuthProviderConfig, type OAuthProviderType, type OAuthProviderAddition
 export { AgentWorkspaceFile, type ContentType } from './models/agent-workspace-file.js';
 export { AgentRuntimeConfig, type DeploymentStatus, type OpenClawConfig } from './models/agent-runtime-config.js';
 export { UserDevice } from './models/user-device.js';
+export { UserAccessToken } from './models/user-access-token.js';
 export { OrgInvite } from './models/org-invite.js';
 export { EmailVerification } from './models/email-verification.js';
 export { OrgDomain } from './models/org-domain.js';

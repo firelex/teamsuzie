@@ -68,7 +68,7 @@ First match wins for single-value config. For knowledge, results from all three 
 - **Agent** — belongs to exactly one org, authenticates with an API key.
 - **AgentProfile** — template for creating agents; same profile can be instantiated in different orgs.
 
-Sessions are cookie-based with CSRF; agents use bearer API keys.
+Browser clients use cookie-based sessions with CSRF; app clients can use bearer access tokens; agents use bearer API keys.
 
 ### 2. Skill runtime (`packages/skills`)
 

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Textarea } from '@teamsuzie/ui';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Button, Textarea, cn } from '@teamsuzie/ui';
 
 interface HealthResponse {
   title: string;
@@ -17,20 +19,347 @@ interface Message {
   content: string;
 }
 
+interface PromptCard {
+  title: string;
+  subtitle: string;
+  prompt: string;
+}
+
+const PROMPTS: PromptCard[] = [
+  {
+    title: 'Runtime tools',
+    subtitle: 'List the tools available in this runtime.',
+    prompt: 'List the tools you can call in this runtime and what each one does.',
+  },
+  {
+    title: 'Deck outline',
+    subtitle: 'Draft an outline for a short investor deck.',
+    prompt: 'Draft an outline for a short Q1 investor deck with four sections.',
+  },
+  {
+    title: 'KPI spreadsheet',
+    subtitle: 'Sketch a weekly KPI spreadsheet.',
+    prompt: 'Sketch a spreadsheet structure for tracking weekly product KPIs.',
+  },
+  {
+    title: 'Session lifecycle',
+    subtitle: 'Explain how the persistent session works.',
+    prompt: 'Explain how the persistent session in this runtime starter works.',
+  },
+];
+
+function greetingFor(date: Date): string {
+  const hour = date.getHours();
+  if (hour < 5) return 'Working late';
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4"
+      aria-hidden="true"
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function Wordmark() {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="size-6 rounded-md bg-foreground" aria-hidden="true" />
+      <div className="flex items-baseline gap-2">
+        <span className="text-sm font-semibold tracking-tight">Team Suzie</span>
+        <span className="text-xs font-medium text-muted-foreground">OpenClaw</span>
+      </div>
+    </div>
+  );
+}
+
+function StatusDot({
+  name,
+  state,
+}: {
+  name: string;
+  state: 'online' | 'offline' | 'pending';
+}) {
+  const dot = {
+    online: 'bg-emerald-500',
+    offline: 'bg-destructive',
+    pending: 'bg-muted-foreground/50',
+  }[state];
+  const title = {
+    online: 'Runtime reachable',
+    offline: 'Runtime offline',
+    pending: 'Checking runtime',
+  }[state];
+  return (
+    <span
+      className="inline-flex items-center gap-2 text-xs text-muted-foreground"
+      title={title}
+    >
+      <span className={cn('size-1.5 rounded-full', dot)} aria-hidden="true" />
+      <span className="font-medium text-foreground/80">{name}</span>
+    </span>
+  );
+}
+
+function MarkdownMessage({ content }: { content: string }) {
+  return (
+    <div className="space-y-3 text-[15px] leading-relaxed text-foreground">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="[&:not(:first-child)]:mt-3">{children}</p>,
+          h1: ({ children }) => (
+            <h3 className="mt-4 text-base font-semibold tracking-tight">{children}</h3>
+          ),
+          h2: ({ children }) => (
+            <h3 className="mt-4 text-base font-semibold tracking-tight">{children}</h3>
+          ),
+          h3: ({ children }) => (
+            <h4 className="mt-4 text-[15px] font-semibold tracking-tight">{children}</h4>
+          ),
+          h4: ({ children }) => (
+            <h4 className="mt-4 text-sm font-semibold tracking-tight">{children}</h4>
+          ),
+          ul: ({ children }) => (
+            <ul className="my-2 list-disc space-y-1 pl-5 marker:text-muted-foreground">
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="my-2 list-decimal space-y-1 pl-5 marker:text-muted-foreground">
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-primary underline underline-offset-2 hover:text-primary/80"
+            >
+              {children}
+            </a>
+          ),
+          code: ({ className, children, ...rest }) => {
+            const isBlock = (className ?? '').includes('language-');
+            if (isBlock) {
+              return (
+                <code className={cn('font-mono text-[13px]', className)} {...rest}>
+                  {children}
+                </code>
+              );
+            }
+            return (
+              <code
+                className="rounded border border-border bg-muted px-1 py-0.5 font-mono text-[13px] text-foreground"
+                {...rest}
+              >
+                {children}
+              </code>
+            );
+          },
+          pre: ({ children }) => (
+            <pre className="my-3 overflow-x-auto rounded-lg border border-border bg-muted p-3 text-[13px] leading-relaxed">
+              {children}
+            </pre>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="my-3 border-l-2 border-border pl-3 text-muted-foreground">
+              {children}
+            </blockquote>
+          ),
+          hr: () => <hr className="my-4 border-border" />,
+          table: ({ children }) => (
+            <div className="my-3 overflow-x-auto">
+              <table className="w-full border-collapse text-sm">{children}</table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="border-b border-border px-3 py-1.5 text-left font-medium">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="border-b border-border px-3 py-1.5 align-top">{children}</td>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-semibold text-foreground">{children}</strong>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+function TypingDots() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-muted-foreground"
+      role="status"
+      aria-label="Agent is typing"
+    >
+      <span className="typing-dot" />
+      <span className="typing-dot" />
+      <span className="typing-dot" />
+    </span>
+  );
+}
+
+function Sidebar({
+  sessionId,
+  onNewChat,
+  canReset,
+}: {
+  sessionId: string;
+  onNewChat: () => void;
+  canReset: boolean;
+}) {
+  return (
+    <aside
+      aria-label="Sidebar"
+      className="hidden w-64 shrink-0 flex-col border-r border-border bg-muted md:flex"
+    >
+      <div className="flex h-14 items-center px-4">
+        <Wordmark />
+      </div>
+      <div className="px-3">
+        <Button
+          size="sm"
+          onClick={onNewChat}
+          disabled={!canReset}
+          className="w-full justify-start gap-2"
+        >
+          <PlusIcon />
+          New chat
+        </Button>
+      </div>
+      <div className="mt-6 flex-1 overflow-y-auto px-3">
+        <div className="px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          History
+        </div>
+        <p className="mt-2 px-1 text-sm text-muted-foreground">
+          No recent chats yet.
+        </p>
+      </div>
+      <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+        <div>Runtime session</div>
+        <div className="mt-1 font-mono text-[11px] text-foreground/70">
+          {sessionId.slice(0, 8)}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function MessageItem({
+  message,
+  agentName,
+  isStreaming,
+}: {
+  message: Message;
+  agentName: string;
+  isStreaming: boolean;
+}) {
+  const isUser = message.role === 'user';
+  const showTyping = !isUser && isStreaming && message.content.length === 0;
+
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[80%] rounded-2xl bg-foreground px-4 py-2.5 text-[15px] leading-relaxed text-background">
+          <div className="whitespace-pre-wrap">{message.content}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="text-[11px] font-medium text-muted-foreground">
+        {agentName}
+      </div>
+      {showTyping ? (
+        <div className="text-[15px] leading-relaxed">
+          <TypingDots />
+        </div>
+      ) : (
+        <MarkdownMessage content={message.content} />
+      )}
+    </div>
+  );
+}
+
+function Greeting({
+  name,
+  prompts,
+  onSelect,
+}: {
+  name: string;
+  prompts: PromptCard[];
+  onSelect: (prompt: string) => void;
+}) {
+  const salutation = useMemo(() => greetingFor(new Date()), []);
+  return (
+    <div className="mx-auto flex h-full w-full max-w-3xl flex-col justify-center px-6 py-16">
+      <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+        {salutation}
+      </h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        How can {name} help today?
+      </p>
+      <div className="mt-10 grid gap-3 sm:grid-cols-2">
+        {prompts.map((card) => (
+          <button
+            key={card.title}
+            type="button"
+            onClick={() => onSelect(card.prompt)}
+            className="group rounded-xl border border-border bg-card px-4 py-3.5 text-left transition-colors hover:border-foreground/20 hover:bg-accent"
+          >
+            <div className="text-sm font-medium text-foreground">
+              {card.title}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {card.subtitle}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const sessionId = useMemo(() => crypto.randomUUID(), []);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [healthLoaded, setHealthLoaded] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending'>('idle');
   const [error, setError] = useState('');
   const endRef = useRef<HTMLDivElement | null>(null);
+
   const agentName = health?.agent?.name || 'Agent';
-  const agentDescription = health?.agent?.description || 'OpenClaw-compatible assistant';
   const agentReachable = health?.agent?.reachable ?? false;
-  const agentStatusText = agentReachable
-    ? 'The runtime answered the health check and is ready for chat.'
-    : health?.agent?.error || 'The runtime health check failed.';
+  const statusState: 'online' | 'offline' | 'pending' = !healthLoaded
+    ? 'pending'
+    : agentReachable
+      ? 'online'
+      : 'offline';
 
   useEffect(() => {
     fetch('/api/health')
@@ -38,15 +367,16 @@ export default function App() {
       .then(setHealth)
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : 'Failed to load health');
-      });
+      })
+      .finally(() => setHealthLoaded(true));
   }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  async function sendMessage() {
-    const text = input.trim();
+  async function sendMessage(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || status === 'sending') {
       return;
     }
@@ -57,7 +387,10 @@ export default function App() {
       content: text,
     };
 
-    const nextHistory = [...messages, nextUserMessage].map(({ role, content }) => ({ role, content }));
+    const nextHistory = [...messages, nextUserMessage].map(({ role, content }) => ({
+      role,
+      content,
+    }));
     const assistantId = crypto.randomUUID();
 
     setMessages((current) => [
@@ -132,7 +465,7 @@ export default function App() {
     }
   }
 
-  async function resetSession() {
+  async function newChat() {
     await fetch('/api/session/reset', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -140,152 +473,87 @@ export default function App() {
     }).catch(() => undefined);
 
     setMessages([]);
+    setInput('');
     setError('');
   }
 
-  return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(31,111,95,0.16),transparent_24%),linear-gradient(180deg,#f3f6f0_0%,#e2eadf_100%)] text-foreground">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="grid gap-4 border-b border-border/70 pb-6 lg:grid-cols-[1.4fr_0.8fr]">
-          <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Starter Template</p>
-            <div className="space-y-2">
-              <h1 className="font-serif text-4xl tracking-tight sm:text-5xl">{health?.title || 'Starter Chat'}</h1>
-              <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">
-                A minimal chatbot starter you can copy into your own agentic application, now using the same React, Tailwind, and UI component approach as the rest of the repo.
-              </p>
-            </div>
-          </div>
+  const isStreaming = status === 'sending';
+  const isEmpty = messages.length === 0;
 
-          <Card className="border-emerald-900/10 bg-white/75 backdrop-blur">
-            <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <CardTitle>{agentName}</CardTitle>
-                  <CardDescription>{agentDescription}</CardDescription>
-                </div>
-                <Badge variant={agentReachable ? 'default' : 'destructive'}>
-                  {agentReachable ? 'Reachable' : 'Offline'}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <p className="text-sm text-muted-foreground">{agentStatusText}</p>
-            </CardContent>
-          </Card>
+  return (
+    <div className="flex h-screen bg-background text-foreground">
+      <Sidebar
+        sessionId={sessionId}
+        onNewChat={() => void newChat()}
+        canReset={messages.length > 0}
+      />
+
+      <main className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 items-center justify-between border-b border-border px-5">
+          <div className="text-sm font-medium text-foreground">
+            {health?.title || 'OpenClaw Starter'}
+          </div>
+          <StatusDot name={agentName} state={statusState} />
         </header>
 
-        <main className="grid min-h-0 flex-1 gap-6 py-6 lg:grid-cols-[1.6fr_0.7fr]">
-          <Card className="flex min-h-[60vh] flex-col overflow-hidden border-emerald-900/10 bg-white/70 backdrop-blur">
-            <CardHeader className="border-b border-border/70">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <CardTitle>Conversation</CardTitle>
-                  <CardDescription>
-                    One persistent session until you reset it.
-                  </CardDescription>
-                </div>
-                <Badge variant={status === 'sending' ? 'secondary' : 'outline'}>
-                  {status === 'sending' ? 'Streaming' : 'Idle'}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="flex min-h-0 flex-1 flex-col p-0">
-              <section className="flex-1 overflow-y-auto p-5">
-          {messages.length === 0 ? (
-                <div className="grid min-h-full place-items-center text-center text-muted-foreground">
-                  <div className="max-w-md space-y-2">
-                    <p className="text-lg font-medium text-foreground">Start the conversation</p>
-                    <p>
-                      Send a message to begin. This starter keeps one session alive until you reset it, which makes it a clean base for tool-enabled assistants.
-                    </p>
-                  </div>
-            </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {isEmpty ? (
+            <Greeting
+              name={agentName}
+              prompts={PROMPTS}
+              onSelect={(prompt) => void sendMessage(prompt)}
+            />
           ) : (
-            messages.map((message) => (
-                    <article
-                      key={message.id}
-                      className={`mb-4 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                        <div
-                          className={`max-w-3xl rounded-2xl border px-4 py-3 shadow-sm ${
-                            message.role === 'user'
-                              ? 'border-emerald-700 bg-emerald-700 text-white'
-                              : 'border-border bg-background/90 text-foreground'
-                          }`}
-                        >
-                          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] opacity-75">
-                            {message.role === 'user' ? 'You' : agentName}
-                          </div>
-                          <div className="whitespace-pre-wrap text-sm leading-6">
-                            {message.content || (message.role === 'assistant' && status === 'sending' ? '...' : '')}
-                          </div>
-                        </div>
-              </article>
-            ))
+            <div className="mx-auto w-full max-w-3xl space-y-6 px-6 py-8">
+              {messages.map((message) => (
+                <MessageItem
+                  key={message.id}
+                  message={message}
+                  agentName={agentName}
+                  isStreaming={isStreaming}
+                />
+              ))}
+              <div ref={endRef} />
+            </div>
           )}
-          <div ref={endRef} />
-        </section>
+        </div>
 
-              <footer className="border-t border-border/70 p-5">
-                <div className="space-y-3">
-                  <Textarea
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                void sendMessage();
-              }
-            }}
-            placeholder="Ask the agent to make a deck, build a spreadsheet, or help with a task..."
-            disabled={status === 'sending'}
-                    className="min-h-32 resize-y rounded-2xl bg-white/90"
-                  />
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      {error || 'Enter sends. Shift+Enter adds a line break.'}
-                    </p>
-                    <div className="flex gap-2 self-end">
-                      <Button variant="outline" onClick={() => void resetSession()}>
-                        Reset Session
-                      </Button>
-                      <Button onClick={() => void sendMessage()} disabled={!input.trim() || status === 'sending'}>
-                {status === 'sending' ? 'Sending...' : 'Send'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </footer>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-4">
-            <Card className="border-emerald-900/10 bg-white/75 backdrop-blur">
-              <CardHeader>
-                <CardTitle>Why This Starter</CardTitle>
-                <CardDescription>Designed to be copied and specialized.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>Use this starter when you want a clean browser chat with one configured runtime and minimal ceremony.</p>
-                <p>The next logical specialization is a document assistant that routes requests to `pptx-agent` and `xlsx-agent`.</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-emerald-900/10 bg-white/75 backdrop-blur">
-              <CardHeader>
-                <CardTitle>Next Steps</CardTitle>
-                <CardDescription>Ways to evolve this into an app.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>1. Add tool-aware prompts and agent roles.</p>
-                <p>2. Persist chat history by org, user, or agent.</p>
-                <p>3. Route deck requests to `pptx-agent` and spreadsheet requests to `xlsx-agent`.</p>
-              </CardContent>
-            </Card>
+        <div className="border-t border-border bg-background px-5 py-4">
+          <div className="mx-auto w-full max-w-3xl">
+            {error && (
+              <p className="mb-2 text-xs text-destructive">{error}</p>
+            )}
+            <div className="rounded-2xl border border-border bg-card shadow-sm transition-all focus-within:border-foreground/25 focus-within:shadow-md">
+              <Textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    void sendMessage();
+                  }
+                }}
+                placeholder={`Message ${agentName}`}
+                disabled={isStreaming}
+                className="min-h-16 resize-none border-0 bg-transparent px-4 pt-3 text-[15px] shadow-none focus-visible:ring-0"
+              />
+              <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
+                <p className="text-xs text-muted-foreground">
+                  Enter sends. Shift + Enter adds a line.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => void sendMessage()}
+                  disabled={!input.trim() || isStreaming}
+                  className="h-8 rounded-full px-4"
+                >
+                  {isStreaming ? <TypingDots /> : 'Send'}
+                </Button>
+              </div>
+            </div>
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

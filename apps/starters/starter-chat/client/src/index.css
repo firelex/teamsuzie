@@ -1,35 +1,34 @@
 @import "tailwindcss";
 
-@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+@source "../../../../../packages/ui/src/**/*.{ts,tsx}";
 @source "./**/*.{ts,tsx}";
 
 @theme {
-  --font-sans: "IBM Plex Sans", "Segoe UI", sans-serif;
-  --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --color-background: oklch(98.7% 0.012 123.8);
-  --color-foreground: oklch(20.2% 0.02 160.7);
+  --color-background: oklch(99% 0.003 200);
+  --color-foreground: oklch(22% 0.012 230);
   --color-card: oklch(100% 0 0);
-  --color-card-foreground: oklch(20.2% 0.02 160.7);
+  --color-card-foreground: oklch(22% 0.012 230);
   --color-popover: oklch(100% 0 0);
-  --color-popover-foreground: oklch(20.2% 0.02 160.7);
-  --color-primary: oklch(47.6% 0.096 171.7);
-  --color-primary-foreground: oklch(98.7% 0.012 123.8);
-  --color-secondary: oklch(95.1% 0.026 130.2);
-  --color-secondary-foreground: oklch(25.1% 0.03 162.5);
-  --color-muted: oklch(94.8% 0.015 126.2);
-  --color-muted-foreground: oklch(46.8% 0.023 154.3);
-  --color-accent: oklch(93.7% 0.031 147.8);
-  --color-accent-foreground: oklch(25.1% 0.03 162.5);
-  --color-destructive: oklch(58.5% 0.218 27.9);
-  --color-destructive-foreground: oklch(98.5% 0.004 95.1);
-  --color-border: oklch(88.2% 0.019 131.6);
-  --color-input: oklch(88.2% 0.019 131.6);
-  --color-ring: oklch(47.6% 0.096 171.7);
+  --color-popover-foreground: oklch(22% 0.012 230);
+  --color-primary: oklch(45% 0.10 170);
+  --color-primary-foreground: oklch(99% 0.003 200);
+  --color-secondary: oklch(96% 0.005 210);
+  --color-secondary-foreground: oklch(30% 0.012 230);
+  --color-muted: oklch(96% 0.005 210);
+  --color-muted-foreground: oklch(48% 0.015 230);
+  --color-accent: oklch(96% 0.005 210);
+  --color-accent-foreground: oklch(30% 0.012 230);
+  --color-destructive: oklch(58% 0.22 28);
+  --color-destructive-foreground: oklch(99% 0.003 100);
+  --color-border: oklch(92% 0.005 210);
+  --color-input: oklch(92% 0.005 210);
+  --color-ring: oklch(45% 0.10 170);
 
-  --radius-lg: 1rem;
+  --radius-lg: 0.75rem;
   --radius-md: calc(var(--radius-lg) - 2px);
-  --radius-sm: calc(var(--radius-lg) - 6px);
+  --radius-sm: calc(var(--radius-lg) - 4px);
 }
 
 @layer base {
@@ -39,15 +38,38 @@
   }
 
   body {
-    @apply m-0 min-h-screen bg-background text-foreground font-sans;
+    @apply m-0 min-h-screen bg-background text-foreground font-sans antialiased;
   }
 
   button,
-  textarea {
+  textarea,
+  input {
     font: inherit;
   }
 
   #root {
     @apply min-h-screen;
+  }
+}
+
+@layer utilities {
+  @keyframes suzie-typing {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+    40% { transform: translateY(-3px); opacity: 1; }
+  }
+
+  .typing-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 9999px;
+    background-color: currentColor;
+    animation: suzie-typing 1.2s infinite ease-in-out both;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .typing-dot { animation: none; }
   }
 }

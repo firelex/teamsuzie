@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import { User } from '../models/user.js';
+import { UserAccessToken } from '../models/user-access-token.js';
 import type { SharedAuthConfig } from '../types.js';
+import { generateApiKey, verifyApiKey } from '../utils/encryption.js';
 
 export default class UserService {
 
@@ -38,6 +40,116 @@ export default class UserService {
         if (!isValid) return null;
 
         return user;
+    }
+
+    createAccessToken = async (
+        userId: string,
+        name = 'app-client',
+        expiresInDays: number | null = 30,
+    ): Promise<{ token: string; accessToken: UserAccessToken }> => {
+        const user = await User.findByPk(userId);
+        if (!user) {
+            throw Object.assign(new Error('User not found'), { code: 404 });
+        }
+
+        const { key, prefix, hash } = generateApiKey('tsu');
+        const expires_at =
+            expiresInDays && expiresInDays > 0
+                ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
+                : null;
+
+        const accessToken = await UserAccessToken.create({
+            user_id: user.id,
+            name,
+            token_hash: hash,
+            token_prefix: prefix,
+            expires_at,
+            created_by: user.id,
+            updated_by: user.id
+        });
+
+        return { token: key, accessToken };
+    }
+
+    authenticateAccessToken = async (providedToken: string): Promise<{
+        user: User;
+        accessToken: UserAccessToken;
+    } | null> => {
+        if (!providedToken || !providedToken.startsWith('tsu_')) {
+            return null;
+        }
+
+        const tokenPrefix = providedToken.substring(0, 12);
+        const candidates = await UserAccessToken.findAll({
+            where: {
+                token_prefix: tokenPrefix,
+                revoked_at: null
+            },
+            include: [User]
+        });
+
+        const now = new Date();
+        for (const candidate of candidates) {
+            if (candidate.expires_at && candidate.expires_at.getTime() <= now.getTime()) {
+                continue;
+            }
+
+            if (!verifyApiKey(providedToken, candidate.token_hash)) {
+                continue;
+            }
+
+            candidate.last_seen_at = now;
+            candidate.updated_by = candidate.user_id;
+            await candidate.save();
+
+            if (!candidate.user) {
+                continue;
+            }
+
+            return { user: candidate.user, accessToken: candidate };
+        }
+
+        return null;
+    }
+
+    listAccessTokens = async (userId: string): Promise<Array<{
+        id: string;
+        name: string;
+        token_prefix: string;
+        last_seen_at: Date | null;
+        expires_at: Date | null;
+        revoked_at: Date | null;
+        created_at: Date;
+    }>> => {
+        const tokens = await UserAccessToken.findAll({
+            where: { user_id: userId },
+            order: [['created_at', 'DESC']]
+        });
+
+        return tokens.map((token) => ({
+            id: token.id,
+            name: token.name,
+            token_prefix: token.token_prefix,
+            last_seen_at: token.last_seen_at,
+            expires_at: token.expires_at,
+            revoked_at: token.revoked_at,
+            created_at: token.created_at
+        }));
+    }
+
+    revokeAccessToken = async (userId: string, tokenId: string): Promise<boolean> => {
+        const token = await UserAccessToken.findOne({
+            where: { id: tokenId, user_id: userId, revoked_at: null }
+        });
+
+        if (!token) {
+            return false;
+        }
+
+        token.revoked_at = new Date();
+        token.updated_by = userId;
+        await token.save();
+        return true;
     }
 
     findById = async (id: string): Promise<User | null> => {

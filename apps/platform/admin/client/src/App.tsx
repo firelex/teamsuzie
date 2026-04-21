@@ -1,273 +1,254 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import {
+  AppShell,
+  AppShellMain,
+  Button,
+  Sidebar,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarNav,
+  SidebarNavItem,
+} from '@teamsuzie/ui';
+import { Protected } from './components/protected.js';
+import { useSession, type SessionUser } from './hooks/use-session.js';
+import { LoginPage } from './pages/login.js';
+import { ChatPage } from './pages/chat.js';
+import { OverviewPage } from './pages/overview.js';
+import { PlaceholderPage } from './pages/placeholder.js';
 
-type ConnectionStatus = 'disconnected' | 'connecting' | 'ready' | 'processing' | 'error';
-
-interface AgentInfo {
-  id: string;
-  name: string;
-  description?: string;
-  running: boolean;
+interface HealthResponse {
+  title: string;
+  agentsConfigured: number;
+  demo?: { email: string; password: string };
 }
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
+interface NavEntry {
+  to: string;
+  label: string;
+  end?: boolean;
 }
 
-type IncomingMessage =
-  | { type: 'status'; status: ConnectionStatus; message?: string }
-  | { type: 'transcript'; role: 'user' | 'assistant'; text: string }
-  | { type: 'transcript_chunk'; text: string }
-  | { type: 'error'; message: string }
-  | { type: 'pong' };
+const NAV: NavEntry[] = [
+  { to: '/', label: 'Overview', end: true },
+  { to: '/chat', label: 'Chat' },
+  { to: '/agents', label: 'Agents' },
+  { to: '/skills', label: 'Skills' },
+  { to: '/approvals', label: 'Approvals' },
+  { to: '/artifacts', label: 'Artifacts' },
+  { to: '/tokens', label: 'Tokens' },
+  { to: '/config', label: 'Config' },
+  { to: '/activity', label: 'Activity' },
+];
 
-function statusLabel(status: ConnectionStatus): string {
-  switch (status) {
-    case 'connecting':
-      return 'Connecting';
-    case 'ready':
-      return 'Ready';
-    case 'processing':
-      return 'Thinking';
-    case 'error':
-      return 'Error';
-    default:
-      return 'Disconnected';
-  }
+function Wordmark({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="size-6 rounded-md bg-foreground" aria-hidden="true" />
+      <span className="text-sm font-semibold tracking-tight">{title}</span>
+    </div>
+  );
+}
+
+function AdminSidebar({
+  title,
+  user,
+  onLogout,
+}: {
+  title: string;
+  user: SessionUser;
+  onLogout: () => Promise<void>;
+}) {
+  return (
+    <Sidebar>
+      <SidebarHeader>
+        <Wordmark title={title} />
+      </SidebarHeader>
+      <SidebarNav>
+        {NAV.map((item) => (
+          <SidebarNavItem key={item.to} asChild>
+            <NavLink to={item.to} end={item.end}>
+              {item.label}
+            </NavLink>
+          </SidebarNavItem>
+        ))}
+      </SidebarNav>
+      <SidebarFooter>
+        <div className="space-y-2">
+          <div className="truncate text-foreground/80">{user.email}</div>
+          <Button variant="outline" size="sm" className="w-full" onClick={() => void onLogout()}>
+            Sign out
+          </Button>
+        </div>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+
+function AppContent({
+  health,
+  user,
+  onLogout,
+}: {
+  health: HealthResponse;
+  user: SessionUser;
+  onLogout: () => Promise<void>;
+}) {
+  return (
+    <AppShell>
+      <AdminSidebar title={health.title} user={user} onLogout={onLogout} />
+      <AppShellMain>
+        <Routes>
+          <Route
+            path="/"
+            element={<OverviewPage title={health.title} agentsConfigured={health.agentsConfigured} user={user} />}
+          />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route
+            path="/agents"
+            element={
+              <PlaceholderPage
+                title="Agents"
+                description="Create and manage agents: runtime type, model, system prompt, skills, approval policy."
+                phase="Phase 1"
+                summary="Full CRUD for agents, attached skills, and runtime config. Extracted from the private monorepo."
+              />
+            }
+          />
+          <Route
+            path="/skills"
+            element={
+              <PlaceholderPage
+                title="Skills"
+                description="Browse installed skills, inspect manifests, and attach them to agents."
+                phase="Phase 2"
+                summary="Skill manifests, per-agent toggles, and required env/config hints."
+              />
+            }
+          />
+          <Route
+            path="/approvals"
+            element={
+              <PlaceholderPage
+                title="Approvals"
+                description="Pending actions proposed by agents. Approve or reject with an audit trail."
+                phase="Phase 3"
+                summary="Inbox of agent-proposed actions with payload, reason, and audit history."
+              />
+            }
+          />
+          <Route
+            path="/artifacts"
+            element={
+              <PlaceholderPage
+                title="Artifacts"
+                description="Files produced by agents — decks, spreadsheets, docs, uploads."
+                phase="Phase 4"
+                summary="Per-agent and per-user browser with preview, download, and delete."
+              />
+            }
+          />
+          <Route
+            path="/tokens"
+            element={
+              <PlaceholderPage
+                title="Tokens"
+                description="API keys for service auth and user bearer tokens for mobile/web clients."
+                phase="Phase 5"
+                summary="Issue, label, and revoke keys. Last-used and expiry tracked automatically."
+              />
+            }
+          />
+          <Route
+            path="/config"
+            element={
+              <PlaceholderPage
+                title="Config"
+                description="Runtime-editable settings: endpoints, models, feature toggles."
+                phase="Phase 6"
+                summary="Scoped config (system > org > user > agent) with encrypted secrets."
+              />
+            }
+          />
+          <Route
+            path="/activity"
+            element={
+              <PlaceholderPage
+                title="Activity"
+                description="Recent sessions, tool calls, and token usage."
+                phase="Phase 7"
+                summary="Event feed with per-agent drill-in, cost breakdown, and daily rollups."
+              />
+            }
+          />
+        </Routes>
+      </AppShellMain>
+    </AppShell>
+  );
+}
+
+function AuthedGate({
+  children,
+  user,
+  loading,
+}: {
+  children: React.ReactNode;
+  user: SessionUser | null;
+  loading: boolean;
+}) {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && user && location.pathname === '/login') {
+      navigate('/', { replace: true });
+    }
+  }, [loading, user, location.pathname, navigate]);
+
+  return <>{children}</>;
 }
 
 export default function App() {
-  const [agents, setAgents] = useState<AgentInfo[]>([]);
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
-  const [error, setError] = useState<string>('');
-  const wsRef = useRef<WebSocket | null>(null);
-  const endRef = useRef<HTMLDivElement | null>(null);
-
-  const selectedAgent = useMemo(
-    () => agents.find((agent) => agent.id === selectedAgentId) ?? null,
-    [agents, selectedAgentId],
-  );
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const session = useSession();
 
   useEffect(() => {
-    fetch('/api/chat/agents')
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Failed to load agents: ${response.status}`);
-        }
-        return response.json() as Promise<{ agents: AgentInfo[] }>;
-      })
-      .then((data) => {
-        setAgents(data.agents);
-        const firstRunning = data.agents.find((agent) => agent.running);
-        if (firstRunning) {
-          setSelectedAgentId(firstRunning.id);
-        }
-      })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Failed to load agents');
-      });
+    fetch('/api/health')
+      .then((r) => r.json() as Promise<HealthResponse>)
+      .then(setHealth)
+      .catch(() => setHealth({ title: 'Team Suzie Admin', agentsConfigured: 0 }));
   }, []);
 
-  useEffect(() => {
-    if (!selectedAgentId) {
-      return;
-    }
-
-    wsRef.current?.close();
-    setMessages([]);
-    setStatus('connecting');
-    setError('');
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat/${selectedAgentId}`);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      setStatus('ready');
-    };
-
-    ws.onmessage = (event) => {
-      const payload = JSON.parse(event.data) as IncomingMessage;
-      if (payload.type === 'status') {
-        setStatus(payload.status);
-        if (payload.message) {
-          setError(payload.message);
-        }
-        return;
-      }
-
-      if (payload.type === 'transcript') {
-        setMessages((current) => [
-          ...current,
-          {
-            id: crypto.randomUUID(),
-            role: payload.role,
-            content: payload.text,
-          },
-        ]);
-        return;
-      }
-
-      if (payload.type === 'transcript_chunk') {
-        setMessages((current) => {
-          if (current.length === 0) {
-            return current;
-          }
-
-          const next = [...current];
-          const last = next[next.length - 1];
-          next[next.length - 1] = {
-            ...last,
-            content: last.content + payload.text,
-          };
-          return next;
-        });
-        return;
-      }
-
-      if (payload.type === 'error') {
-        setStatus('error');
-        setError(payload.message);
-      }
-    };
-
-    ws.onerror = () => {
-      setStatus('error');
-      setError('WebSocket connection failed');
-    };
-
-    ws.onclose = () => {
-      setStatus('disconnected');
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [selectedAgentId]);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  function sendText() {
-    if (!input.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    wsRef.current.send(JSON.stringify({ type: 'text', text: input.trim() }));
-    setInput('');
-  }
-
-  function clearSession() {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'clear_session' }));
-    }
-    setMessages([]);
-  }
+  const resolvedHealth = health ?? { title: 'Team Suzie Admin', agentsConfigured: 0 };
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div>
-          <p className="eyebrow">Team Suzie OSS</p>
-          <h1>Admin Chat</h1>
-          <p className="lede">
-            A thin browser chat for exercising OpenClaw-compatible agents against the OSS stack.
-          </p>
-        </div>
-
-        <div className="panel">
-          <div className="panel-header">
-            <h2>Agents</h2>
-            <span className={`status-pill status-${status}`}>{statusLabel(status)}</span>
-          </div>
-
-          {agents.length === 0 ? (
-            <p className="muted">No agents configured yet.</p>
-          ) : (
-            <div className="agent-list">
-              {agents.map((agent) => (
-                <button
-                  key={agent.id}
-                  className={`agent-button ${agent.id === selectedAgentId ? 'selected' : ''}`}
-                  onClick={() => setSelectedAgentId(agent.id)}
-                >
-                  <span className={`agent-dot ${agent.running ? 'running' : 'stopped'}`} />
-                  <span>
-                    <strong>{agent.name}</strong>
-                    <small>{agent.description || (agent.running ? 'Reachable' : 'Not reachable')}</small>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="panel">
-          <h2>Setup</h2>
-          <p className="muted">
-            Add agents in <code>apps/platform/admin/.env</code> with <code>CHAT_AGENTS</code> and point each
-            one at an OpenClaw-compatible <code>/v1/chat/completions</code> endpoint.
-          </p>
-        </div>
-      </aside>
-
-      <main className="chat-shell">
-        <header className="chat-header">
-          <div>
-            <h2>{selectedAgent?.name || 'Select an agent'}</h2>
-            <p className="muted">
-              {selectedAgent
-                ? selectedAgent.description || 'OpenClaw-compatible runtime'
-                : 'Choose a configured agent to begin chatting.'}
-            </p>
-          </div>
-          <button className="secondary-button" onClick={clearSession} disabled={!selectedAgentId}>
-            Clear Session
-          </button>
-        </header>
-
-        <section className="message-list">
-          {messages.length === 0 ? (
-            <div className="empty-state">
-              <p>Send a message to start a session.</p>
-            </div>
-          ) : (
-            messages.map((message) => (
-              <article key={message.id} className={`message ${message.role}`}>
-                <div className="message-label">{message.role === 'user' ? 'You' : 'Agent'}</div>
-                <div className="message-body">{message.content}</div>
-              </article>
-            ))
-          )}
-          <div ref={endRef} />
-        </section>
-
-        <footer className="composer">
-          <textarea
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendText();
-              }
-            }}
-            placeholder="Ask your agent to do something useful..."
-            disabled={!selectedAgentId || status === 'processing'}
-          />
-          <div className="composer-actions">
-            <div className="muted">{error || 'Enter sends. Shift+Enter adds a new line.'}</div>
-            <button className="primary-button" onClick={sendText} disabled={!input.trim() || !selectedAgentId}>
-              Send
-            </button>
-          </div>
-        </footer>
-      </main>
-    </div>
+    <AuthedGate user={session.user} loading={session.loading}>
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            <LoginPage
+              title={resolvedHealth.title}
+              onAuthenticated={session.refresh}
+              demo={resolvedHealth.demo}
+            />
+          }
+        />
+        <Route
+          path="/*"
+          element={
+            <Protected user={session.user} loading={session.loading}>
+              {session.user && (
+                <AppContent
+                  health={resolvedHealth}
+                  user={session.user}
+                  onLogout={session.logout}
+                />
+              )}
+            </Protected>
+          }
+        />
+      </Routes>
+    </AuthedGate>
   );
 }

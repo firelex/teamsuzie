@@ -7,7 +7,7 @@ import cors from 'cors';
 import config from './config/index.js';
 import {
     SequelizeService, SessionService, CsrfMiddleware,
-    User, Organization, OrganizationMember, Agent, AgentProfile,
+    User, Organization, OrganizationMember, Agent, AgentProfile, UserAccessToken,
     createAuthRouter,
     type SharedAuthConfig
 } from '@teamsuzie/shared-auth';
@@ -40,7 +40,7 @@ type ModelWithAssociate = ModelCtor & { associate: (models: unknown) => void };
 const migrationsPath = path.join(__dirname, 'migrations/sequelize');
 const sequelizeService = new SequelizeService(
     sharedAuthConfig,
-    [User, Organization, OrganizationMember, AgentProfile, Agent] as ModelWithAssociate[],
+    [User, Organization, OrganizationMember, AgentProfile, Agent, UserAccessToken] as ModelWithAssociate[],
     migrationsPath
 );
 await sequelizeService.init(true);
@@ -53,8 +53,10 @@ sessionService.init(app);
 const csrfMiddleware = new CsrfMiddleware(sharedAuthConfig);
 app.use(csrfMiddleware.checkCsrf);
 
-// Auth routes (login, logout, register, me, users)
-app.use(createAuthRouter(sharedAuthConfig));
+// Auth routes (mounted at both / and /auth for client convenience)
+const authRouter = createAuthRouter(sharedAuthConfig);
+app.use(authRouter);
+app.use('/auth', authRouter);
 
 // Config endpoint for clients
 app.get('/config', (_req, res) => {

@@ -1,52 +1,100 @@
 # Team Suzie
 
-**An open business operating layer for autonomous multi-agent systems.**
+**Ship an agentic app this afternoon. Bring a coding assistant; Team Suzie brings the scaffolding.**
 
-Agent runtimes give you execution. Team Suzie gives you the business context agents need to operate inside real organizations: skills, workspaces, approval queues, multi-tenant auth, and scoped knowledge bases. The proven integration today is [OpenClaw](https://github.com/openclaw); LangGraph, CrewAI, and other runtimes are target adapters on the roadmap.
+You're a product expert, a domain expert, a founder — someone who knows exactly what the agent should *do* but doesn't want to spend two weeks wiring up auth, chat UIs, approval flows, and knowledge bases before you get there. This repo is for you. Clone it, point your coding assistant at it, and describe what you want to build.
 
-> **Phase 1 (today — v0.1):** The five pillars ship as **runnable, tested TypeScript packages**. Fifteen packages and services build clean; 113 tests pass. What's not here yet: a full admin control plane, a first-party demo agent, and application-level integrations (email dispatcher, DB-backed approval store, first-party skills that talk to real APIs).
->
-> **Phase 2+ (coming weeks — v0.2 through v0.4):** admin UI, reference dispatchers (email approvals, webhooks), first-party skills, demo agent, and durable storage for the approval queue. When all phases land, the OSS repo covers the core of what's running on [teamsuzie.com](https://teamsuzie.com) — minus the commercial layer (billing, paid-skill marketplace, managed OAuth, hosted orchestration), which stays in the hosted product. See [ROADMAP](docs/ROADMAP.md) for exact phasing.
->
-> **Who Phase 1 is for today:** platform and infrastructure engineers who want to build on a multi-tenant agent substrate and are comfortable wiring their own applications on top. If you want a batteries-included agent product you can click through, come back at Phase 2 or use the hosted service.
+The hosted version lives at [teamsuzie.com](https://teamsuzie.com). This repo is the open-source core — evolving quickly, usable today.
 
-## Why Team Suzie
+---
 
-Most agent frameworks answer *"how do I run a prompt loop with tools?"* Few answer *"how do I run agents for a team, track what they can and can't do, route actions through human approval, and share a knowledge base across a whole organization?"* That layer is what Team Suzie is.
+## Build your app in four steps
 
-It is **additive** to your agent runtime, not a replacement for one.
+### 1. Install a coding assistant
 
-## The five pillars
+You'll be describing your app in English; the assistant does the wiring. Any of these work — pick one:
 
-1. **Multi-tenant by default.** Every piece of state — knowledge, config, skills, approvals — is scoped: `global / org / agent`. An agent queries its own scope plus its org's, transparently.
-2. **Skill runtime.** Skills are discoverable, installable, versioned capabilities. Each one ships as a template (instructions + files) that gets injected into an agent's workspace. Composable; no monolithic tool registry.
-3. **Human-in-the-loop approvals.** A reusable approval queue primitive with a pluggable dispatcher interface. Agents propose actions; humans approve, reject, or edit; approved actions dispatch via whichever dispatcher is registered for the action type (email, Slack, webhooks, custom — your call). Generic by design: the core package ships with no provider-specific code.
-4. **Scoped knowledge bases.** Vector search (Milvus) and graph queries (Neo4j) with the same scope model. One agent, three hierarchical knowledge sources, one query.
-5. **Multi-tenant control plane.** Session auth with org/user/agent identity, scoped config inheritance (agent → org → global), and an LLM proxy that attributes every token to the agent that spent it. The substrate that makes the other four pillars coherent across tenants.
+- [Claude Code](https://claude.com/claude-code) — Anthropic's CLI, runs in your terminal or IDE
+- [Codex](https://github.com/openai/codex) — OpenAI's coding CLI
+- [OpenCode](https://opencode.ai) — open-source, provider-agnostic
 
-## What this repo is not
+Install it, sign in, and make sure `claude`, `codex`, or `opencode` runs in your terminal.
 
-- **Not an agent runtime.** Bring OpenClaw (proven today) or write an adapter for your own loop. LangGraph and CrewAI are target integrations, not yet validated.
-- **Not a foundation model.** The LLM proxy routes to whichever provider you configure.
-- **Not a commercial platform.** Billing, paid skills, entitlement enforcement, managed connectors, and hosted orchestration live in the commercial [Team Suzie](https://teamsuzie.com) product, not here.
-
-## Is this useful without the hosted product?
-
-Yes — that's the whole point. Team Suzie OSS is a self-contained, self-hostable stack: auth, multi-tenant knowledge, skill runtime, approval queue, LLM proxy. You can run agents for your own team on your own infrastructure with zero dependency on hosted Team Suzie. The commercial product exists for teams who want managed billing, paid-skill marketplaces, enterprise OAuth, and hosted orchestration on top — it is not a gate in front of the features in this repo.
-
-## Quickstart
-
-What actually works in v0.1:
+### 2. Clone this repo
 
 ```bash
 git clone https://github.com/firelex/teamsuzie
 cd teamsuzie
 pnpm install
-pnpm -r build         # all packages + apps build clean
-pnpm -r test          # 113 tests green
 ```
 
-To stand up the backend services locally:
+If you don't have `pnpm`, install it first: `npm install -g pnpm`. No need to read the code — your assistant will.
+
+### 3. Pick a starter template
+
+Two templates live in `apps/starters/`. Copy one, rename it, and make it yours.
+
+| If you want… | Use this starter | Notes |
+|---|---|---|
+| A chat app on **any OpenAI-compatible backend** (OpenAI, Anthropic via proxy, local models, our `llm-proxy`) | [`starter-chat`](apps/starters/starter-chat) | Simplest path. No agent-runtime lock-in. |
+| A chat app on an **OpenClaw agent runtime** (session continuity, tool use, Team Suzie skills) | [`starter-chat-openclaw`](apps/starters/starter-chat-openclaw) | Use this if you want the full Team Suzie + [OpenClaw](https://github.com/openclaw) path. |
+| An **internal tool / ops console** (tables, auth-guarded pages, admin panel, agent drawer) | [`starter-ops-console`](apps/starters/starter-ops-console) | Pick this when your app is mostly a tool with an agent attached. Destructive actions gated through the approval queue by default. |
+
+Both are small Express + React apps that stream chat. They're meant to be copied and extended.
+
+### 4. Pick a backend
+
+You have two options — your assistant can set either one up:
+
+- **Standalone** — run Team Suzie's services (`auth`, `llm-proxy`, `vector-db`, `graph-db`) directly from this repo. Tell your assistant: *"set up the standalone backend from the README quickstart."*
+- **On OpenClaw** — run the Team Suzie pillars inside an [OpenClaw](https://github.com/openclaw) runtime for full agent-loop execution, tool use, and session management. Tell your assistant: *"wire my starter to an OpenClaw backend."*
+
+Start standalone if you're unsure. Moving to OpenClaw later is mostly a config swap.
+
+### 5. Prompt your assistant
+
+Open the repo in your coding assistant and describe what you want. Examples that work:
+
+> *"I want a customer-support agent for a SaaS company. Use `starter-chat` as the base. It should answer questions about our pricing and refund policy — I'll paste those in. Deploy locally first."*
+
+> *"Turn `starter-chat-openclaw` into a sales research agent. It looks up companies, drafts outreach emails, and routes every email through the approval queue before sending."*
+
+> *"Build a meeting-notes assistant on `starter-chat`. I upload a transcript, it summarizes and saves to the knowledge base so I can query past meetings later."*
+
+> *"Make me an internal HR assistant. It answers policy questions from a knowledge base I'll populate, and it can file time-off requests — but time-off has to go through human approval."*
+
+Your assistant will read the repo, ask what it needs (API keys, policies, branding), and build from there. If it gets stuck, tell it what's wrong; it'll adjust.
+
+---
+
+## What Team Suzie gives you, out of the box
+
+So you don't rebuild any of this:
+
+- **Auth** — multi-tenant sessions for browsers plus optional bearer tokens for app clients (orgs, users, agents) so your app is shippable to more than one customer on day one.
+- **LLM proxy** — one endpoint, many providers, per-agent usage tracking.
+- **Skill runtime** — installable capabilities you (or your assistant) drop into an agent's workspace. Composable; no monolithic tool registry.
+- **Approval queue** — a primitive for "agent proposes, human approves." Pluggable dispatchers (email, Slack, webhooks, your call).
+- **Scoped knowledge bases** — vector search (Milvus) + graph (Neo4j) with per-agent / per-org / global scopes.
+- **Chat starters** — the two templates above, already wired for streaming and session handling.
+
+You'll use some of these; you won't need to write any of them.
+
+---
+
+## For platform engineers
+
+If you're building the substrate rather than the product on top, the rest of this README is for you.
+
+### The five pillars
+
+1. **Multi-tenant by default.** Every piece of state — knowledge, config, skills, approvals — is scoped `global / org / agent`. An agent queries its own scope plus its org's, transparently.
+2. **Skill runtime.** Skills are discoverable, installable, versioned capabilities shipped as templates (instructions + files) injected into an agent's workspace.
+3. **Human-in-the-loop approvals.** Reusable approval queue with a pluggable dispatcher interface. Generic by design — no provider-specific code in the core.
+4. **Scoped knowledge bases.** Vector + graph with the same scope model. One agent, three hierarchical knowledge sources, one query.
+5. **Multi-tenant control plane.** Session auth with org/user/agent identity, scoped config inheritance, LLM proxy that attributes every token.
+
+### Standalone backend quickstart
 
 ```bash
 cp .env.example .env
@@ -57,9 +105,9 @@ pnpm dev:vector-db    # :3006
 pnpm dev:graph-db     # :3007
 ```
 
-There is now a minimal browser-based admin chat console for exercising OpenClaw-compatible agents. Broader management surfaces are still coming; today the rest of the stack is primarily REST APIs you build against. A `curl`-driven tour of the backend pillars lives in [docs/QUICKSTART.md](docs/QUICKSTART.md).
+A `curl`-driven tour lives in [docs/QUICKSTART.md](docs/QUICKSTART.md). Full architecture in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Roadmap in [docs/ROADMAP.md](docs/ROADMAP.md).
 
-## Architecture
+### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -82,24 +130,20 @@ There is now a minimal browser-based admin chat console for exercising OpenClaw-
               └────────────────────────────┘
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
+### Packages
 
-## Packages
+| Package | Purpose |
+|---|---|
+| `@teamsuzie/types` | Shared TypeScript types (scopes, agent context) |
+| `@teamsuzie/shared-auth` | Multi-tenant auth models (org, user, agent) |
+| `@teamsuzie/skills` | Headless skill runtime — discovery, template rendering, pluggable target |
+| `@teamsuzie/approvals` | Approval queue state machine with pluggable store & dispatchers |
+| `@teamsuzie/db-client` | Typed clients for vector-db and graph-db services |
+| `@teamsuzie/usage-tracker` | Redis-backed LLM usage event publisher |
+| `@teamsuzie/config-client` | Scoped config resolver |
+| `@teamsuzie/ui` | Shared React component library |
 
-| Package | Purpose | v0.1 |
-|---|---|:---:|
-| `@teamsuzie/types` | Shared TypeScript types (scopes, agent context) | ✅ |
-| `@teamsuzie/shared-auth` | Multi-tenant auth models (org, user, agent) + 9 tests | ✅ |
-| `@teamsuzie/skills` | Headless skill runtime — discovery, template rendering, pluggable target + 11 tests | ✅ |
-| `@teamsuzie/approvals` | Approval queue state machine with pluggable store & dispatchers + 18 tests | ✅ |
-| `@teamsuzie/db-client` | Typed clients for vector-db and graph-db services | ✅ |
-| `@teamsuzie/usage-tracker` | Redis-backed LLM usage event publisher | ✅ |
-| `@teamsuzie/config-client` | Scoped config resolver | ✅ |
-| `@teamsuzie/ui` | Shared React component library for admin and example apps | ✅ |
-
-## Apps
-
-Repository layout:
+### Apps
 
 ```text
 apps/platform  # core services and admin shell
@@ -107,18 +151,20 @@ apps/starters  # starter templates and demos
 apps/agents    # capability services like pptx/xlsx generation
 ```
 
-| App | Port | Purpose | v0.1 |
-|---|---|---|:---:|
-| `auth` | 3005 | Session-based multi-tenant auth | ✅ |
-| `llm-proxy` | 4000 | LLM routing with usage tracking + 28 tests | ✅ |
-| `vector-db` | 3006 | Scoped Milvus vector search | ✅ |
-| `graph-db` | 3007 | Scoped Neo4j graph queries | ✅ |
-| `pptx-agent` | 3009 | LLM-powered PowerPoint generation service | ✅ |
-| `xlsx-agent` | 3012 | LLM-powered spreadsheet generation service | ✅ |
-| `admin` | 3008 | Minimal admin shell + browser chat console | ✅ |
-| `starter-chat` | 16311 | Generic full-stack chat starter for OpenAI-compatible backends | ✅ |
-| `starter-chat-openclaw` | 14311 | Minimal full-stack chatbot starter for OpenClaw-compatible runtimes | ✅ |
-| `demo` | — | Minimal example agent wired to all of the above | v0.3 |
+| App | Port | Purpose |
+|---|---|---|
+| `auth` | 3005 | Session-based multi-tenant auth |
+| `llm-proxy` | 4000 | LLM routing with usage tracking |
+| `vector-db` | 3006 | Scoped Milvus vector search |
+| `graph-db` | 3007 | Scoped Neo4j graph queries |
+| `pptx-agent` | 3009 | LLM-powered PowerPoint generation |
+| `xlsx-agent` | 3012 | LLM-powered spreadsheet generation |
+| `admin` | 3008 | Minimal admin shell + browser chat console |
+| `starter-chat` | 16311 | Generic full-stack chat starter |
+| `starter-chat-openclaw` | 14311 | OpenClaw-oriented chat starter |
+| `starter-ops-console` | 18311 | Internal-tool / ops-console starter with approval-gated destructive actions |
+
+---
 
 ## License
 

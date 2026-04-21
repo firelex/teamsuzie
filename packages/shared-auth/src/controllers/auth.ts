@@ -21,6 +21,91 @@ export default class AuthController {
         this.userService = new UserService(config);
     }
 
+    private extractBearerToken(req: Request): string | null {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) {
+            return null;
+        }
+
+        const token = authHeader.slice(7).trim();
+        return token || null;
+    }
+
+    private serializeUser(user: User | { id: string; email: string; name: string; role: string }) {
+        return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role
+        };
+    }
+
+    private async getAuthenticatedUser(req: Request): Promise<{
+        user: User | { id: string; email: string; name: string; role: string };
+        auth_type: 'session' | 'bearer';
+        token_id?: string;
+    } | null> {
+        const session = req.session as any;
+        if (session.userId) {
+            const user = await this.userService.findById(session.userId);
+            if (!user) {
+                return null;
+            }
+
+            return {
+                user,
+                auth_type: 'session'
+            };
+        }
+
+        const token = this.extractBearerToken(req);
+        if (!token) {
+            return null;
+        }
+
+        const result = await this.userService.authenticateAccessToken(token);
+        if (!result) {
+            return null;
+        }
+
+        return {
+            user: result.user,
+            auth_type: 'bearer',
+            token_id: result.accessToken.id
+        };
+    }
+
+    private async buildTokenResponse(userId: string, req: Request): Promise<{
+        access_token: string;
+        token_type: 'Bearer';
+        expires_at: string | null;
+        token_name: string;
+    } | null> {
+        if (req.body?.issue_bearer_token !== true) {
+            return null;
+        }
+
+        const tokenName = String(req.body?.token_name || req.headers['x-client-name'] || 'app-client').trim() || 'app-client';
+        const expiresInDaysRaw = req.body?.expires_in_days;
+        const expiresInDays =
+            expiresInDaysRaw === null || expiresInDaysRaw === undefined || expiresInDaysRaw === ''
+                ? 30
+                : Number(expiresInDaysRaw);
+
+        const { token, accessToken } = await this.userService.createAccessToken(
+            userId,
+            tokenName,
+            Number.isFinite(expiresInDays) ? expiresInDays : 30,
+        );
+
+        return {
+            access_token: token,
+            token_type: 'Bearer',
+            expires_at: accessToken.expires_at ? accessToken.expires_at.toISOString() : null,
+            token_name: accessToken.name
+        };
+    }
+
     private async ensureHumanWorkspace(user: User): Promise<void> {
         const memberships = await OrganizationMember.findAll({
             where: { user_id: user.id },
@@ -112,30 +197,35 @@ export default class AuthController {
 
     me = async (req: Request, res: Response): Promise<void> => {
         try {
-            const session = req.session as any;
-            if (session.userId) {
-                let role = session.userRole;
-                if (!role) {
-                    const user = await this.userService.findById(session.userId);
-                    if (user) {
-                        role = user.role;
-                        session.userRole = role;
-                    } else {
-                        role = 'user';
-                    }
-                }
-
-                res.status(200).json({
-                    user: {
-                        id: session.userId,
-                        email: session.userEmail,
-                        name: session.userName,
-                        role: role
-                    }
-                });
-            } else {
+            const auth = await this.getAuthenticatedUser(req);
+            if (!auth) {
                 res.status(401).json({ message: 'Not authenticated' });
+                return;
             }
+
+            res.status(200).json({
+                auth_type: auth.auth_type,
+                user: this.serializeUser(auth.user)
+            });
+        } catch (e: any) {
+            res.status(500).json({ message: e.message || 'Internal server error' });
+        }
+    }
+
+    introspect = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const auth = await this.getAuthenticatedUser(req);
+            if (!auth) {
+                res.status(401).json({ authenticated: false, message: 'Not authenticated' });
+                return;
+            }
+
+            res.status(200).json({
+                authenticated: true,
+                auth_type: auth.auth_type,
+                token_id: auth.token_id,
+                user: this.serializeUser(auth.user)
+            });
         } catch (e: any) {
             res.status(500).json({ message: e.message || 'Internal server error' });
         }
@@ -160,26 +250,29 @@ export default class AuthController {
             await this.ensureHumanWorkspace(user);
 
             // Regenerate session to prevent session fixation attacks
-            req.session.regenerate((err) => {
+            req.session.regenerate(async (err) => {
                 if (err) {
                     res.status(500).json({ message: 'Session error' });
                     return;
                 }
 
-                const session = req.session as any;
-                session.userId = user.id;
-                session.userEmail = user.email;
-                session.userName = user.name;
-                session.userRole = user.role;
+                try {
+                    const session = req.session as any;
+                    session.userId = user.id;
+                    session.userEmail = user.email;
+                    session.userName = user.name;
+                    session.userRole = user.role;
 
-                res.status(200).json({
-                    user: {
-                        id: user.id,
-                        email: user.email,
-                        name: user.name,
-                        role: user.role
-                    }
-                });
+                    const tokenResponse = await this.buildTokenResponse(user.id, req);
+
+                    res.status(200).json({
+                        auth_type: tokenResponse ? 'session+bearer' : 'session',
+                        user: this.serializeUser(user),
+                        ...(tokenResponse || {})
+                    });
+                } catch (tokenError: any) {
+                    res.status(500).json({ message: tokenError.message || 'Internal server error' });
+                }
             });
         } catch (e: any) {
             res.status(500).json({ message: e.message || 'Internal server error' });
@@ -188,13 +281,30 @@ export default class AuthController {
 
     logout = async (req: Request, res: Response): Promise<void> => {
         try {
-            req.session.destroy((err) => {
-                if (err) {
-                    res.status(500).json({ message: 'Failed to logout' });
-                } else {
-                    res.status(200).json({ message: 'Logged out successfully' });
-                }
-            });
+            const auth = await this.getAuthenticatedUser(req);
+            const session = req.session as any;
+
+            if (auth?.auth_type === 'bearer' && auth.token_id) {
+                await this.userService.revokeAccessToken(auth.user.id, auth.token_id);
+            }
+
+            if (session?.userId) {
+                req.session.destroy((err) => {
+                    if (err) {
+                        res.status(500).json({ message: 'Failed to logout' });
+                    } else {
+                        res.status(200).json({ message: 'Logged out successfully' });
+                    }
+                });
+                return;
+            }
+
+            if (auth?.auth_type === 'bearer') {
+                res.status(200).json({ message: 'Bearer token revoked successfully' });
+                return;
+            }
+
+            res.status(200).json({ message: 'Nothing to logout' });
         } catch (e: any) {
             res.status(500).json({ message: e.message || 'Internal server error' });
         }
@@ -210,32 +320,110 @@ export default class AuthController {
             }
 
             const user = await this.userService.create(email, password, name);
+            await this.ensureHumanWorkspace(user);
 
             // Regenerate session to prevent session fixation attacks
-            req.session.regenerate((err) => {
+            req.session.regenerate(async (err) => {
                 if (err) {
                     res.status(500).json({ message: 'Session error' });
                     return;
                 }
 
-                const session = req.session as any;
-                session.userId = user.id;
-                session.userEmail = user.email;
-                session.userName = user.name;
-                session.userRole = user.role;
+                try {
+                    const session = req.session as any;
+                    session.userId = user.id;
+                    session.userEmail = user.email;
+                    session.userName = user.name;
+                    session.userRole = user.role;
 
-                res.status(201).json({
-                    user: {
-                        id: user.id,
-                        email: user.email,
-                        name: user.name,
-                        role: user.role
-                    }
-                });
+                    const tokenResponse = await this.buildTokenResponse(user.id, req);
+
+                    res.status(201).json({
+                        auth_type: tokenResponse ? 'session+bearer' : 'session',
+                        user: this.serializeUser(user),
+                        ...(tokenResponse || {})
+                    });
+                } catch (tokenError: any) {
+                    res.status(500).json({ message: tokenError.message || 'Internal server error' });
+                }
             });
         } catch (e: any) {
             const code = e.code || 500;
             res.status(code).json({ message: e.message || 'Internal server error' });
+        }
+    }
+
+    createAccessToken = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const auth = await this.getAuthenticatedUser(req);
+            if (!auth) {
+                res.status(401).json({ message: 'Not authenticated' });
+                return;
+            }
+
+            const tokenName = String(req.body?.token_name || req.headers['x-client-name'] || 'app-client').trim() || 'app-client';
+            const expiresInDaysRaw = req.body?.expires_in_days;
+            const expiresInDays =
+                expiresInDaysRaw === null || expiresInDaysRaw === undefined || expiresInDaysRaw === ''
+                    ? 30
+                    : Number(expiresInDaysRaw);
+
+            const { token, accessToken } = await this.userService.createAccessToken(
+                auth.user.id,
+                tokenName,
+                Number.isFinite(expiresInDays) ? expiresInDays : 30,
+            );
+
+            res.status(201).json({
+                access_token: token,
+                token_type: 'Bearer',
+                token_name: accessToken.name,
+                expires_at: accessToken.expires_at ? accessToken.expires_at.toISOString() : null
+            });
+        } catch (e: any) {
+            const code = e.code || 500;
+            res.status(code).json({ message: e.message || 'Internal server error' });
+        }
+    }
+
+    listAccessTokens = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const auth = await this.getAuthenticatedUser(req);
+            if (!auth) {
+                res.status(401).json({ message: 'Not authenticated' });
+                return;
+            }
+
+            const tokens = await this.userService.listAccessTokens(auth.user.id);
+            res.status(200).json({ tokens });
+        } catch (e: any) {
+            res.status(500).json({ message: e.message || 'Internal server error' });
+        }
+    }
+
+    revokeAccessToken = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const auth = await this.getAuthenticatedUser(req);
+            if (!auth) {
+                res.status(401).json({ message: 'Not authenticated' });
+                return;
+            }
+
+            const tokenId = String(req.params.id || '').trim();
+            if (!tokenId) {
+                res.status(400).json({ message: 'Token id is required' });
+                return;
+            }
+
+            const revoked = await this.userService.revokeAccessToken(auth.user.id, tokenId);
+            if (!revoked) {
+                res.status(404).json({ message: 'Token not found' });
+                return;
+            }
+
+            res.status(200).json({ message: 'Token revoked successfully' });
+        } catch (e: any) {
+            res.status(500).json({ message: e.message || 'Internal server error' });
         }
     }
 

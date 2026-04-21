@@ -53,6 +53,28 @@ pnpm dev:graph-db     # :3007
 pnpm dev:admin        # :3008
 ```
 
+### Optional: get a bearer token for a mobile / Flutter / standalone client
+
+Once `auth` is running, you can issue a client token with:
+
+```bash
+curl -X POST http://localhost:3005/auth/login \
+  -H 'Content-Type: application/json' \
+  -H 'X-Auth-Flow: bearer' \
+  -d '{
+    "email": "you@example.com",
+    "password": "your-password",
+    "issue_bearer_token": true,
+    "token_name": "flutter-dev"
+  }'
+```
+
+That returns a one-time `access_token` you can use as:
+
+```bash
+Authorization: Bearer <token>
+```
+
 ## 5. Create an org and an agent *(v0.3)*
 
 Open the admin UI at [http://localhost:3008](http://localhost:3008). Sign up with any email (no email verification in OSS dev mode). Create an org, then create an agent — copy the API key it gives you.

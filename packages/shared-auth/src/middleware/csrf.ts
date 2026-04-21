@@ -14,9 +14,24 @@ export default class CsrfMiddleware {
         this.excludedEndpoints = excludedEndpoints;
     }
 
+    isBearerClientAuth(req: Request): boolean {
+        const authEndpoints = ['/api/auth/login', '/api/auth/register', '/auth/login', '/auth/register', '/login', '/register'];
+        if (req.method !== 'POST') {
+            return false;
+        }
+
+        if (!authEndpoints.some(ep => req.originalUrl === ep || req.originalUrl.endsWith(ep))) {
+            return false;
+        }
+
+        const authFlow = String(req.headers['x-auth-flow'] || '').toLowerCase();
+        const issueBearerToken = req.body?.issue_bearer_token === true;
+        return authFlow === 'bearer' || issueBearerToken;
+    }
+
     isDevEnvAuth(req: Request): boolean {
-        const authEndpoints = ['/api/auth/login', '/api/auth/register'];
-        return authEndpoints.some(ep => req.originalUrl === ep) &&
+        const authEndpoints = ['/api/auth/login', '/api/auth/register', '/auth/login', '/auth/register', '/login', '/register'];
+        return authEndpoints.some(ep => req.originalUrl === ep || req.originalUrl.endsWith(ep)) &&
             req.method === 'POST' &&
             this.config.node_env === 'development';
     }
@@ -63,7 +78,7 @@ export default class CsrfMiddleware {
         const token = this.tokens.create(csrfSecret);
         res.cookie(this.config.csrf.cookie_name, token, cookieOptions);
 
-        if (isUnProtectedMethod || this.isDevEnvAuth(req)) {
+        if (isUnProtectedMethod || this.isDevEnvAuth(req) || this.isBearerClientAuth(req)) {
             return next();
         }
 
