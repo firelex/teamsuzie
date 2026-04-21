@@ -1,92 +1,10 @@
 # admin
 
-OSS admin control plane for the Team Suzie stack. **Port 3008** (backend) / **5175** (Vite dev).
+Operator control plane for the Team Suzie OSS stack. Agents, skills, approvals, text artifacts, bearer tokens, runtime config, and an audit-backed activity feed — plus the browser chat console that reaches the OpenClaw-compatible agents you've registered.
 
-This is the thicker successor to the original "chat-only" admin. It ships phase-by-phase — Phase 0 (this one) wires the foundations that every subsequent phase plugs into.
+**Port 3008** (backend) / **5175** (Vite dev).
 
-## What's live
-
-**Phase 0 — foundations**
-
-- Routed React shell: Overview, Chat, and placeholder pages for Skills / Approvals / Artifacts / Tokens / Config / Activity
-- Session-based auth via `@teamsuzie/shared-auth` (login, logout, `/api/session`)
-- Postgres + Redis backed by `SequelizeService` + `SessionService`
-- Dev-only seed: admin + demo users shown on the login page
-- The original OpenClaw chat proxy (HTTP + WebSocket streaming) lives under the **Chat** tab
-
-**Phase 1 — agent registry**
-
-- CRUD endpoints at `/api/agents` (session-auth, org-scoped)
-- `/api/agent-profiles` lists seeded profile templates (Assistant, Researcher)
-- Agents page: list, create, edit, delete with profile/runtime/behaviour form
-- Chat proxy is DB-aware: active agents are unioned with `CHAT_AGENTS` env entries, with a `source=db|env` marker on each row
-
-**Phase 2 — skills**
-
-- `/api/skill-templates` (list + detail) discovers SKILL.md manifests under `packages/skills/templates/`
-- Required context for each skill is derived from `{{TOKEN}}` placeholders in the manifest body
-- Skills page: grid of installed skills with name, description, and required-context badges
-- Agent edit: comma-separated skills input replaced with a checkbox picker sourced from `/api/skill-templates`
-- Ships 5 skills: `file-access`, `hello-world`, `documents`, `presentations`, `spreadsheets`
-
-**Phase 3 — approvals**
-
-- `/api/approvals` surfaces a human-in-the-loop queue backed by `@teamsuzie/approvals` (in-memory store for v1)
-- `GET /api/approvals?status=pending|approved|rejected|dispatched|failed` (list) + `GET /:id` (detail) + `POST /` (propose) + `POST /:id/review` + `GET /action-types`
-- Approve flow auto-dispatches when a handler is registered for the item's `action_type`; otherwise the item stays in `approved` for manual follow-up (future phases will register specific dispatchers)
-- Every propose + review writes an `AuditLog` row — actor, action_type, verdict, outcome — so the trail survives even though the queue itself is in-memory
-- Approvals page: tab filter by status, DataTable with approve/reject actions on pending rows, click-row dialog showing payload / metadata / review / dispatch detail
-
-**Phase 4 — artifacts**
-
-- `/api/workspace/files` surfaces agent-written workspace files backed by `AgentWorkspaceFile`
-- `GET /api/workspace/files` (list, `?agent_id=<uuid>` or `?agent_id=null` for unattached) + `GET /:id` (detail with content) + `POST /` (upsert — 201 on create, 200 on overwrite) + `DELETE /:id`
-- Paths are validated: must be relative, no `..` traversal. `content_type` limited to `markdown | json | yaml | text`; unknown agent ids are rejected up-front with 404
-- Artifacts page: filter by agent, DataTable with path / agent / content-type / size / created, row-click dialog with monospace content preview, Download (generates a browser Blob) and Delete
-- **v1 scope note**: this phase handles text artifacts only. Binary outputs (pptx, xlsx, docx) need either a blob column on `AgentWorkspaceFile` or a separate object-storage service — tracked for a follow-on phase
-
-**Phase 5 — tokens**
-
-- `/api/agent-keys` issues named, scope-tagged bearer keys per agent (prefix `dtk_`, shown plaintext once on create, `last_used_at` tracked on use, revoke flips `is_active` + `revoked_at`)
-- User access tokens (prefix `tsu_`) reuse shared-auth's existing `/api/auth/tokens` CRUD — no admin-specific route needed
-- `requireSession` now accepts either a session cookie **or** a `tsu_` user bearer — laptop CLIs and mobile clients can hit the admin API directly
-- `POST /api/approvals` accepts either a session **or** a `dtk_` agent bearer, so agents can propose approvals on their own key. Actor attribution flows through `getRequestActor` → logs and audit entries show `actor=agent:user_id` with `org_id` populated from the agent's org
-- Every create and revoke writes an `AuditLog` row (`api_key.create` / `api_key.revoke`)
-- Agent delete now cascades to its `AgentApiKey` + `AgentWorkspaceFile` rows — no more FK-constraint failures
-- Tokens page: two sections (agent keys + user access tokens), create dialog with scope picker and expiry, one-time plaintext reveal with copy-to-clipboard, revoke with confirm
-
-**Phase 6 — config**
-
-- `/api/config/definitions` + `/api/config/values` (list) + `/api/config/values/:key` (get/put/delete) backed by `ConfigDefinition` / `ConfigValue`; values AES-256-GCM encrypted at rest with a secret derived from `CONFIG_SECRET` (falls back to `COOKIE_SECRET` in dev)
-- Scope hierarchy: `agent` → `user` → `org` → `global` → definition `default_value`. Most-specific wins. Per-agent and per-org overrides fully supported by the API; UI edits the system (`global`) scope only in v1
-- Secrets (`is_sensitive=true`) are never returned in plaintext over HTTP — lists/gets redact to `null`, UI renders `[REDACTED]` with "Replace" as the action
-- Value-type coercion on `PUT`: numbers match `/^-?\d+(\.\d+)?$/`, booleans must be `"true"` or `"false"`, JSON is parsed, `validation_schema.enum`/`minLength`/`maxLength` respected
-- Every `create` / `update` / `delete` writes an `AuditLog` row (`config.*`)
-- `ChatProxyService` reads `chat.default_model` in-process (agent-scope → global → definition default → `"default"`) — proves the runtime-consumer path
-- Ships four seeded definitions: `admin.title`, `chat.default_model`, `approvals.require_by_default`, `integrations.webhook_secret`
-- Config page: category-grouped cards (platform / ai / service / infrastructure / oauth), per-row status badge (`default` / `system` / `agent`…), `requires-restart` flag, inline Edit or Replace (for secrets), Reset to revert to the definition's default
-
-**Phase 7 — activity**
-
-- `/api/activity` surfaces the cross-phase `audit_log` as a paginated event feed with `action_prefix` / `resource_type` / `actor_type` / `actor_id` / `since` / `until` filters and `limit`+`offset` pagination; each row is enriched with the actor's email (for user rows) or agent name (for agent rows)
-- `/api/activity/recent-agents` returns the top-N agents by `last_active_at`
-- `ChatProxyService` bumps `Agent.last_active_at` (fire-and-forget) on every DB-managed agent's chat turn, so "recently active" is a live signal without a separate telemetry channel
-- Overview page grows two live cards: **Recent activity** (latest 8 audit events) and **Recently active agents** (top 5 by `last_active_at`)
-- Activity page: preset filter tabs (All / Agents / Approvals / Tokens / Config), DataTable with time + actor + action + resource, row-click drawer with full `details` JSON
-- **Scope note**: token counts and tool-call timelines aren't captured by admin today — that surface belongs to the llm-proxy's `usage_events` pipeline and will arrive as a follow-on integration
-
-## Tests
-
-Integration suite lives at `apps/platform/admin/src/__tests__/` — one file per phase, supertest against the real Express app and a throwaway Postgres schema. **52 tests, ~3 seconds.**
-
-```bash
-pnpm docker:up                          # postgres + redis
-pnpm --filter @teamsuzie/admin test     # or: pnpm -r test
-```
-
-The harness (`src/__tests__/setup.ts`) auto-creates the `teamsuzie_test` database on first run, drops & recreates schema on each invocation, and routes Redis sessions under a process-scoped prefix so test runs don't trample each other. Override `TEST_POSTGRES_BASE_URI` / `TEST_POSTGRES_DB` / `TEST_REDIS_URI` if your local infra differs from the defaults.
-
-## Run (local)
+## Run
 
 ```bash
 # From the repo root, bring up postgres + redis.
@@ -98,20 +16,94 @@ cp apps/platform/admin/.env.example apps/platform/admin/.env
 pnpm --filter @teamsuzie/admin dev
 ```
 
-Then open <http://localhost:5175> and sign in with the demo credentials shown on the login page.
+Open <http://localhost:5175> and sign in with the dev-mode demo credentials shown on the login page.
 
-## Configuring chat agents
+## Surface
 
-The Chat page reads from `CHAT_AGENTS` in `apps/platform/admin/.env`. Each agent needs `id`, `name`, and `baseUrl`; optional `apiKey` and `openclawAgentId`:
+| Page       | What it does                                                                              | Backend                                       |
+| ---------- | ----------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Overview   | Live cards: recent activity, recently active agents, stack health, roadmap                | `/api/activity`, `/api/activity/recent-agents`|
+| Chat       | OpenClaw-compatible chat console (DB-managed agents ∪ `CHAT_AGENTS` env entries)          | `WS /ws/chat/:id`, `/api/chat/agents`         |
+| Agents     | CRUD for agents + seeded profile templates (Assistant, Researcher)                        | `/api/agents`, `/api/agent-profiles`          |
+| Skills     | Discover `SKILL.md` manifests; attach per-agent                                           | `/api/skill-templates`                        |
+| Approvals  | Inbox of human-in-the-loop proposals; approve/reject/dispatch; full audit trail           | `/api/approvals`                              |
+| Artifacts  | Text files agents wrote to their workspace (markdown / json / yaml / text)                | `/api/workspace/files`                        |
+| Tokens     | Agent API keys (multi-key, scope-tagged) and user bearer tokens                           | `/api/agent-keys`, `/api/auth/tokens`         |
+| Config     | Scoped runtime settings (`agent → user → org → global → default`), encrypted at rest      | `/api/config`                                 |
+| Activity   | Paginated audit-log feed with actor enrichment; filter by action / resource / actor       | `/api/activity`                               |
+
+## Auth
+
+Three lanes, all load-bearing somewhere in the app.
+
+- **Session cookie** — browser UI. Login via `POST /api/auth/login`, logged-in probe at `GET /api/session`. All mutating UI calls use this lane.
+- **User bearer token** (`tsu_…`) — laptop CLIs and mobile clients. Issued by `POST /api/auth/tokens`, sent as `Authorization: Bearer tsu_…`. Accepted everywhere a session cookie would be.
+- **Agent bearer key** (`dtk_…`) — server-to-server, agent on its own credentials. Issued by `POST /api/agent-keys` with a scope list; sent as `Authorization: Bearer dtk_…`. Accepted on `POST /api/approvals` so agents can propose actions themselves; other operator routes stay session-only.
+
+All creates + revokes write `AuditLog` rows (`api_key.create`, `api_key.revoke`). Agent delete cascades to the agent's API keys and workspace files.
+
+## Chat agents
+
+The Chat page pulls from two sources, unioned with a `source=db|env` marker on each row:
+
+1. Agents created via `/api/agents` (stored in Postgres, status `active`)
+2. `CHAT_AGENTS` in `apps/platform/admin/.env` — a JSON array, same shape as the registry:
+
+   ```bash
+   CHAT_AGENTS=[{"id":"suzie","name":"Suzie","baseUrl":"http://localhost:18789","apiKey":"your-token","openclawAgentId":"main"}]
+   ```
+
+Each message bumps `Agent.last_active_at` for DB agents so the Overview's "Recently active" card reflects real usage.
+
+## Config
+
+`ConfigDefinition` holds the schema; `ConfigValue` holds values. Resolution is `agent → user → org → global → definition default` (most-specific wins). Values are AES-256-GCM encrypted at rest with a secret derived from `CONFIG_SECRET` (falls back to `COOKIE_SECRET` in dev).
+
+Sensitive definitions (`is_sensitive: true`) never return plaintext over HTTP — the UI renders `[REDACTED]` with "Replace" as the only action.
+
+Seeded definitions:
+
+| Key                              | Type    | Purpose                                                             |
+| -------------------------------- | ------- | ------------------------------------------------------------------- |
+| `admin.title`                    | string  | Overrides `ADMIN_TITLE` env in the sidebar wordmark + login card    |
+| `chat.default_model`             | string  | Default model for OpenClaw completions. Read by `ChatProxyService`. |
+| `approvals.require_by_default`   | boolean | Future default for new agents' `approval_required` flag             |
+| `integrations.webhook_secret`    | secret  | Placeholder for inbound webhook signing (not consumed yet)          |
+
+The UI edits the `global` scope only; per-agent / per-org overrides are fully supported at the API (`?scope=agent&scope_id=…`).
+
+## Artifacts
+
+Text only in this build. `AgentWorkspaceFile` stores one blob of `content` per `(organization_id, agent_id, file_path)`; `content_type` is one of `markdown | json | yaml | text`. `POST /api/workspace/files` upserts (201 on create, 200 on overwrite), rejects absolute paths and `..` traversal, and verifies the owning agent exists in the caller's org.
+
+Binary outputs (pptx, xlsx, docx) need either a blob column on this table or a separate object-storage service — not in this build.
+
+## Approvals
+
+Backed by `@teamsuzie/approvals` with an `InMemoryApprovalStore`. A proposal is `POST /api/approvals` with `{action_type, payload, metadata?}`; a review is `POST /api/approvals/:id/review` with `{verdict: 'approve' | 'reject', reason?}`.
+
+Approve auto-dispatches when a handler is registered for the item's `action_type`; otherwise the item stays in `approved` state for manual follow-up. The admin registers one generic `agent.action` dispatcher as a no-op fallback. Every propose + review writes an `AuditLog` row.
+
+## Activity
+
+The Activity page is a paginated view on `audit_log` with preset filter tabs (All / Agents / Approvals / Tokens / Config). Each row is enriched with the actor's email (user lane) or agent name (agent lane). Overview surfaces the latest 8 events plus the top 5 recently-active agents.
+
+Token counts and tool-call timelines aren't captured here — that surface is owned by the llm-proxy's `usage_events` pipeline.
+
+## Tests
+
+Integration suite at `src/__tests__/` — one file per surface, supertest against the real Express app and a throwaway Postgres schema. **52 tests, ~3 seconds.**
 
 ```bash
-CHAT_AGENTS=[{"id":"suzie","name":"Suzie","baseUrl":"http://localhost:18789","apiKey":"your-token","openclawAgentId":"main"}]
+pnpm docker:up                          # postgres + redis
+pnpm --filter @teamsuzie/admin test     # or: pnpm -r test
 ```
 
-Once Phase 1 lands, DB-managed agents will take precedence over this env fallback.
+`setup.ts` auto-creates the `teamsuzie_test` database on first run, drops & recreates the `public` schema on each invocation, and uses a process-scoped Redis key prefix so runs don't trample each other. Override `TEST_POSTGRES_BASE_URI` / `TEST_POSTGRES_DB` / `TEST_REDIS_URI` if your local infra differs.
 
 ## Stack
 
-- Express + `@teamsuzie/shared-auth` on the backend (Sequelize + Redis + session)
+- Express + `@teamsuzie/shared-auth` on the backend (Sequelize + Redis + session, request-id middleware, actor attribution via `getRequestActor`)
 - React + Vite + `@teamsuzie/ui` (Tailwind) on the client
 - WebSocket transport for chat streaming
+- `vitest` + `supertest` for the integration suite
