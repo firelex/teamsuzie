@@ -37,11 +37,18 @@ This is the thicker successor to the original "chat-only" admin. It ships phase-
 - Every propose + review writes an `AuditLog` row — actor, action_type, verdict, outcome — so the trail survives even though the queue itself is in-memory
 - Approvals page: tab filter by status, DataTable with approve/reject actions on pending rows, click-row dialog showing payload / metadata / review / dispatch detail
 
+**Phase 4 — artifacts**
+
+- `/api/workspace/files` surfaces agent-written workspace files backed by `AgentWorkspaceFile`
+- `GET /api/workspace/files` (list, `?agent_id=<uuid>` or `?agent_id=null` for unattached) + `GET /:id` (detail with content) + `POST /` (upsert — 201 on create, 200 on overwrite) + `DELETE /:id`
+- Paths are validated: must be relative, no `..` traversal. `content_type` limited to `markdown | json | yaml | text`; unknown agent ids are rejected up-front with 404
+- Artifacts page: filter by agent, DataTable with path / agent / content-type / size / created, row-click dialog with monospace content preview, Download (generates a browser Blob) and Delete
+- **v1 scope note**: this phase handles text artifacts only. Binary outputs (pptx, xlsx, docx) need either a blob column on `AgentWorkspaceFile` or a separate object-storage service — tracked for a follow-on phase
+
 ## What's coming
 
 | Phase | Surface   | Summary                                                                     |
 | ----- | --------- | --------------------------------------------------------------------------- |
-| 4     | Artifacts | Browser for files produced by agents (pptx/xlsx/docx/uploads)               |
 | 5     | Tokens    | Agent API keys + user bearer tokens                                         |
 | 6     | Config    | Runtime-editable scoped settings (system / org / user / agent)              |
 | 7     | Activity  | Recent sessions, tool calls, token usage                                    |

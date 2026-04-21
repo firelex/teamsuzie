@@ -6,6 +6,7 @@ import { createServer } from 'node:http';
 import {
   Agent,
   AgentProfile,
+  AgentWorkspaceFile,
   AuditLog,
   OrgDomain,
   Organization,
@@ -23,13 +24,16 @@ import { ChatController } from './controllers/chat.js';
 import { AgentsController } from './controllers/agents.js';
 import { SkillsController } from './controllers/skills.js';
 import { ApprovalsController } from './controllers/approvals.js';
+import { WorkspaceController } from './controllers/workspace.js';
 import { createChatRouter } from './routes/chat.js';
 import { createAgentsRouter, createAgentProfilesRouter } from './routes/agents.js';
 import { createSkillsRouter } from './routes/skills.js';
 import { createApprovalsRouter } from './routes/approvals.js';
+import { createWorkspaceRouter } from './routes/workspace.js';
 import { ChatProxyService } from './services/chat-proxy.js';
 import { AgentsService } from './services/agents.js';
 import { SkillsService } from './services/skills.js';
+import { WorkspaceService } from './services/workspace.js';
 import { createApprovalQueue } from './services/approvals.js';
 import { ensureSeed } from './services/seed.js';
 import { printStartupError } from './services/startup-errors.js';
@@ -59,6 +63,7 @@ async function main() {
       OrgDomain,
       UserAccessToken,
       AuditLog,
+      AgentWorkspaceFile,
     ] as ModelWithAssociate[],
   );
 
@@ -145,6 +150,13 @@ async function main() {
   const approvalQueue = createApprovalQueue();
   const approvalsController = new ApprovalsController(approvalQueue);
   app.use('/api/approvals', createApprovalsRouter(approvalsController));
+
+  // Workspace artifacts — Phase 4. Text-only (markdown/json/yaml/text) via
+  // AgentWorkspaceFile. Binary file delivery (pptx/xlsx/docx) needs a blob
+  // column migration or an object-storage service; intentionally out of v1.
+  const workspaceService = new WorkspaceService();
+  const workspaceController = new WorkspaceController(workspaceService);
+  app.use('/api/workspace', createWorkspaceRouter(workspaceController));
 
   app.use('/api/chat', createChatRouter(chatController));
 

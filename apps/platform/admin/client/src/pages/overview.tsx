@@ -24,8 +24,8 @@ const ROADMAP: { phase: string; name: string; status: 'live' | 'next' | 'planned
   { phase: '1', name: 'Agent registry', status: 'live' },
   { phase: '2', name: 'Skills management', status: 'live' },
   { phase: '3', name: 'Approvals inbox', status: 'live' },
-  { phase: '4', name: 'Artifacts browser', status: 'next' },
-  { phase: '5', name: 'Tokens & API keys', status: 'planned' },
+  { phase: '4', name: 'Artifacts browser', status: 'live' },
+  { phase: '5', name: 'Tokens & API keys', status: 'next' },
   { phase: '6', name: 'Config surface', status: 'planned' },
   { phase: '7', name: 'Activity & usage', status: 'planned' },
 ];

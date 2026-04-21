@@ -20,6 +20,7 @@ import { AgentsPage } from './pages/agents.js';
 import { AgentEditPage } from './pages/agent-edit.js';
 import { SkillsPage } from './pages/skills.js';
 import { ApprovalsPage } from './pages/approvals.js';
+import { ArtifactsPage } from './pages/artifacts.js';
 
 interface HealthResponse {
   title: string;
@@ -113,17 +114,7 @@ function AppContent({
           <Route path="/agents/:id" element={<AgentEditPage />} />
           <Route path="/skills" element={<SkillsPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
-          <Route
-            path="/artifacts"
-            element={
-              <PlaceholderPage
-                title="Artifacts"
-                description="Files produced by agents — decks, spreadsheets, docs, uploads."
-                phase="Phase 4"
-                summary="Per-agent and per-user browser with preview, download, and delete."
-              />
-            }
-          />
+          <Route path="/artifacts" element={<ArtifactsPage />} />
           <Route
             path="/tokens"
             element={
