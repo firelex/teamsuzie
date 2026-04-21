@@ -72,6 +72,9 @@ importers:
       '@teamsuzie/skills':
         specifier: workspace:*
         version: link:../../../packages/skills
+      '@teamsuzie/usage-tracker':
+        specifier: workspace:*
+        version: link:../../../packages/usage-tracker
       connect-redis:
         specifier: ^8.0.1
         version: 8.1.0(express-session@1.19.0)

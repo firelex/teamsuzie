@@ -28,11 +28,27 @@ export interface ActivityRow {
   details: Record<string, unknown> | null;
 }
 
+interface UsageRow {
+  id: string;
+  timestamp: string;
+  service: string;
+  operation: string;
+  model: string | null;
+  input_units: number;
+  output_units: number;
+  cost_estimate: number;
+  agent_id: string | null;
+  agent_name: string | null;
+  request_id: string | null;
+}
+
 interface FilterPreset {
   key: string;
   label: string;
   actionPrefix?: string;
   resourceType?: string;
+  /** When true, the "LLM" tab loads usage events instead of audit rows. */
+  usage?: boolean;
 }
 
 const FILTER_PRESETS: FilterPreset[] = [
@@ -41,6 +57,7 @@ const FILTER_PRESETS: FilterPreset[] = [
   { key: 'approvals', label: 'Approvals', actionPrefix: 'approval.' },
   { key: 'tokens', label: 'Tokens', actionPrefix: 'api_key.' },
   { key: 'config', label: 'Config', actionPrefix: 'config.' },
+  { key: 'llm', label: 'LLM', usage: true },
 ];
 
 function actionVariant(action: string): 'default' | 'secondary' | 'destructive' | 'outline' {
@@ -52,31 +69,58 @@ function actionVariant(action: string): 'default' | 'secondary' | 'destructive' 
   return 'outline';
 }
 
+function formatCost(cost: number): string {
+  if (cost === 0) return '$0.00';
+  if (cost < 0.01) return `$${cost.toFixed(4)}`;
+  return `$${cost.toFixed(2)}`;
+}
+
+function formatTokens(n: number): string {
+  if (n < 1000) return n.toString();
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}K`;
+  return `${(n / 1_000_000).toFixed(2)}M`;
+}
+
 export function ActivityPage() {
   const [rows, setRows] = useState<ActivityRow[]>([]);
+  const [usageRows, setUsageRows] = useState<UsageRow[]>([]);
   const [total, setTotal] = useState(0);
   const [filter, setFilter] = useState<FilterPreset>(FILTER_PRESETS[0]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<ActivityRow | null>(null);
+  const [usageDetail, setUsageDetail] = useState<UsageRow | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const params = new URLSearchParams({ limit: '50' });
-    if (filter.actionPrefix) params.set('action_prefix', filter.actionPrefix);
-    if (filter.resourceType) params.set('resource_type', filter.resourceType);
     try {
-      const response = await fetch(`/api/activity?${params.toString()}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const data = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error || `Failed to load activity (${response.status})`);
+      if (filter.usage) {
+        const response = await fetch('/api/activity/usage?limit=50', {
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          const data = (await response.json().catch(() => ({}))) as { error?: string };
+          throw new Error(data.error || `Failed to load usage (${response.status})`);
+        }
+        const data = (await response.json()) as { items: UsageRow[]; total: number };
+        setUsageRows(data.items ?? []);
+        setTotal(data.total ?? 0);
+      } else {
+        const params = new URLSearchParams({ limit: '50' });
+        if (filter.actionPrefix) params.set('action_prefix', filter.actionPrefix);
+        if (filter.resourceType) params.set('resource_type', filter.resourceType);
+        const response = await fetch(`/api/activity?${params.toString()}`, {
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          const data = (await response.json().catch(() => ({}))) as { error?: string };
+          throw new Error(data.error || `Failed to load activity (${response.status})`);
+        }
+        const data = (await response.json()) as { items: ActivityRow[]; total: number };
+        setRows(data.items ?? []);
+        setTotal(data.total ?? 0);
       }
-      const data = (await response.json()) as { items: ActivityRow[]; total: number };
-      setRows(data.items ?? []);
-      setTotal(data.total ?? 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load activity');
     } finally {
@@ -88,7 +132,7 @@ export function ActivityPage() {
     void refresh();
   }, [refresh]);
 
-  const columns = useMemo<Column<ActivityRow>[]>(
+  const auditColumns = useMemo<Column<ActivityRow>[]>(
     () => [
       {
         key: 'timestamp',
@@ -138,16 +182,67 @@ export function ActivityPage() {
     [],
   );
 
+  const usageColumns = useMemo<Column<UsageRow>[]>(
+    () => [
+      {
+        key: 'timestamp',
+        header: 'When',
+        render: (row) => (
+          <span className="text-xs text-muted-foreground">{new Date(row.timestamp).toLocaleString()}</span>
+        ),
+      },
+      {
+        key: 'service',
+        header: 'Service',
+        render: (row) => (
+          <div className="min-w-0">
+            <Badge variant="outline" className="font-mono text-[10px]">
+              {row.service}
+            </Badge>
+            {row.model && (
+              <div className="mt-1 truncate font-mono text-[10px] text-muted-foreground">{row.model}</div>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: 'agent',
+        header: 'Agent',
+        render: (row) =>
+          row.agent_name ? (
+            <span className="truncate">{row.agent_name}</span>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
+      },
+      {
+        key: 'tokens',
+        header: 'Tokens',
+        align: 'right',
+        render: (row) => (
+          <span className="font-mono text-xs">
+            {formatTokens(row.input_units)} / {formatTokens(row.output_units)}
+          </span>
+        ),
+      },
+      {
+        key: 'cost',
+        header: 'Cost',
+        align: 'right',
+        render: (row) => <span className="font-mono text-xs">{formatCost(row.cost_estimate)}</span>,
+      },
+    ],
+    [],
+  );
+
   return (
     <>
       <PageHeader>
         <PageHeaderContent>
           <PageHeaderTitle>Activity</PageHeaderTitle>
           <PageHeaderDescription>
-            Every state change captured by the admin control plane. Backed by{' '}
-            <code className="font-mono">audit_log</code>; each row shows the actor lane
-            (<code className="font-mono">user</code> / <code className="font-mono">agent</code> /{' '}
-            <code className="font-mono">system</code>) that produced it.
+            Every state change captured by the admin control plane plus LLM usage ingested from the llm-proxy. Backed by{' '}
+            <code className="font-mono">audit_log</code> and <code className="font-mono">usage_event</code>.
           </PageHeaderDescription>
         </PageHeaderContent>
       </PageHeader>
@@ -165,7 +260,7 @@ export function ActivityPage() {
               </Button>
             ))}
             <div className="ml-auto text-xs text-muted-foreground">
-              {loading ? 'loading…' : `${rows.length} of ${total}`}
+              {loading ? 'loading…' : `${filter.usage ? usageRows.length : rows.length} of ${total}`}
             </div>
           </div>
 
@@ -175,19 +270,35 @@ export function ActivityPage() {
             </div>
           )}
 
-          <DataTable<ActivityRow>
-            data={rows}
-            columns={columns}
-            getRowKey={(row) => row.id}
-            isLoading={loading}
-            emptyMessage="No activity yet."
-            onRowClick={(row) => setDetail(row)}
-            renderActions={(row) => (
-              <Button variant="ghost" size="sm" onClick={() => setDetail(row)}>
-                View
-              </Button>
-            )}
-          />
+          {filter.usage ? (
+            <DataTable<UsageRow>
+              data={usageRows}
+              columns={usageColumns}
+              getRowKey={(row) => row.id}
+              isLoading={loading}
+              emptyMessage="No LLM calls recorded yet. Make a request through the llm-proxy to see it here."
+              onRowClick={(row) => setUsageDetail(row)}
+              renderActions={(row) => (
+                <Button variant="ghost" size="sm" onClick={() => setUsageDetail(row)}>
+                  View
+                </Button>
+              )}
+            />
+          ) : (
+            <DataTable<ActivityRow>
+              data={rows}
+              columns={auditColumns}
+              getRowKey={(row) => row.id}
+              isLoading={loading}
+              emptyMessage="No activity yet."
+              onRowClick={(row) => setDetail(row)}
+              renderActions={(row) => (
+                <Button variant="ghost" size="sm" onClick={() => setDetail(row)}>
+                  View
+                </Button>
+              )}
+            />
+          )}
         </div>
       </AppShellContent>
 
@@ -226,6 +337,48 @@ export function ActivityPage() {
                   {detail.details ? JSON.stringify(detail.details, null, 2) : '(none)'}
                 </pre>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!usageDetail} onOpenChange={(open) => !open && setUsageDetail(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Badge variant="outline" className="font-mono text-[10px]">
+                {usageDetail?.service}
+              </Badge>
+              {usageDetail?.model && <span className="font-mono text-sm">{usageDetail.model}</span>}
+            </DialogTitle>
+            <DialogDescription>
+              {usageDetail
+                ? `${new Date(usageDetail.timestamp).toLocaleString()} · ${usageDetail.operation}${
+                    usageDetail.agent_name ? ` · ${usageDetail.agent_name}` : ''
+                  }`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {usageDetail && (
+            <div className="grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <div className="text-xs text-muted-foreground">Input tokens</div>
+                <div className="font-mono">{usageDetail.input_units.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Output tokens</div>
+                <div className="font-mono">{usageDetail.output_units.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Cost (est.)</div>
+                <div className="font-mono">{formatCost(usageDetail.cost_estimate)}</div>
+              </div>
+              {usageDetail.request_id && (
+                <div className="sm:col-span-2">
+                  <div className="text-xs text-muted-foreground">Request id</div>
+                  <div className="truncate font-mono text-xs">{usageDetail.request_id}</div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

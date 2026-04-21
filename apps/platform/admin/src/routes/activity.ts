@@ -8,6 +8,8 @@ export function createActivityRouter(controller: ActivityController): Router {
 
   router.get('/', controller.list);
   router.get('/recent-agents', controller.recentlyActive);
+  router.get('/usage', controller.listUsage);
+  router.get('/usage-summary', controller.usageSummary);
 
   return router;
 }

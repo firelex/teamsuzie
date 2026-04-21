@@ -90,4 +90,62 @@ export class ActivityController {
       res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to list recent agents' });
     }
   };
+
+  listUsage = async (req: Request, res: Response): Promise<void> => {
+    const session = getSession(req);
+    try {
+      const orgId = await this.agentsService.resolveOrgId(session.userId!);
+
+      const agentId = typeof req.query.agent_id === 'string' ? req.query.agent_id : undefined;
+      const service = typeof req.query.service === 'string' ? req.query.service : undefined;
+      const since = typeof req.query.since === 'string' ? req.query.since : undefined;
+      const until = typeof req.query.until === 'string' ? req.query.until : undefined;
+
+      const limitRaw = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+      const offsetRaw = typeof req.query.offset === 'string' ? Number(req.query.offset) : undefined;
+      const limit = Number.isFinite(limitRaw) && limitRaw! > 0 ? Math.floor(limitRaw!) : undefined;
+      const offset = Number.isFinite(offsetRaw) && offsetRaw! >= 0 ? Math.floor(offsetRaw!) : undefined;
+
+      const result = await this.service.listUsage(orgId, {
+        agentId,
+        service,
+        since,
+        until,
+        limit,
+        offset,
+      });
+      this.logOk(req, 'listUsage', `count=${result.items.length} total=${result.total}`);
+      res.json(result);
+    } catch (err) {
+      this.logFail(req, 'listUsage', err);
+      res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to list usage' });
+    }
+  };
+
+  usageSummary = async (req: Request, res: Response): Promise<void> => {
+    const session = getSession(req);
+    try {
+      const orgId = await this.agentsService.resolveOrgId(session.userId!);
+      const agentId = typeof req.query.agent_id === 'string' ? req.query.agent_id : undefined;
+      const service = typeof req.query.service === 'string' ? req.query.service : undefined;
+
+      // Default range: today (UTC). Callers pass explicit since/until for
+      // other windows like MTD.
+      const now = new Date();
+      const defaultSince = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+      const since = typeof req.query.since === 'string' ? req.query.since : defaultSince;
+      const until = typeof req.query.until === 'string' ? req.query.until : undefined;
+
+      const summary = await this.service.usageSummary(orgId, { agentId, service, since, until });
+      this.logOk(
+        req,
+        'usageSummary',
+        `requests=${summary.total.request_count} cost=${summary.total.cost_estimate.toFixed(4)} services=${summary.by_service.length}`,
+      );
+      res.json(summary);
+    } catch (err) {
+      this.logFail(req, 'usageSummary', err);
+      res.status(500).json({ error: err instanceof Error ? err.message : 'Failed to summarize usage' });
+    }
+  };
 }

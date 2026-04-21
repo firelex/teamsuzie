@@ -86,9 +86,14 @@ Approve auto-dispatches when a handler is registered for the item's `action_type
 
 ## Activity
 
-The Activity page is a paginated view on `audit_log` with preset filter tabs (All / Agents / Approvals / Tokens / Config). Each row is enriched with the actor's email (user lane) or agent name (agent lane). Overview surfaces the latest 8 events plus the top 5 recently-active agents.
+Two surfaces, one page:
 
-Token counts and tool-call timelines aren't captured here — that surface is owned by the llm-proxy's `usage_events` pipeline.
+- **`audit_log`** — paginated view with preset filter tabs (All / Agents / Approvals / Tokens / Config). Each row is enriched with the actor's email (user lane) or agent name (agent lane).
+- **`usage_event`** — an LLM tab that lists every call the llm-proxy handled: service, model, agent attribution, input/output tokens, and estimated cost.
+
+Overview surfaces the latest audit events, the top 5 recently-active agents, and today's LLM usage rollup (requests, tokens, cost, per-service breakdown).
+
+Usage rows come from the llm-proxy: it publishes to the Redis channel `usage:events` on every LLM call (the DB is deliberately off the proxy's hot path). Admin subscribes, resolves `user_api_key_hash` against `AgentApiKey.key_hash` to attribute each event to an agent/org, and persists the row. Cost is computed from `@teamsuzie/usage-tracker`'s `COST_RATES` when the publisher doesn't supply one.
 
 ## Tests
 

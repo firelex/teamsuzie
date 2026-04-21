@@ -29,6 +29,22 @@ interface RecentAgent {
   status: string;
 }
 
+interface UsageSummary {
+  total: {
+    input_units: number;
+    output_units: number;
+    total_units: number;
+    cost_estimate: number;
+    request_count: number;
+  };
+  by_service: Array<{
+    service: string;
+    total_units: number;
+    cost_estimate: number;
+    request_count: number;
+  }>;
+}
+
 const ROADMAP: { phase: string; name: string; status: 'live' | 'next' | 'planned' }[] = [
   { phase: '0', name: 'Foundations (auth + routed shell)', status: 'live' },
   { phase: '1', name: 'Agent registry', status: 'live' },
@@ -58,15 +74,29 @@ function relativeTime(iso: string | null): string {
   return `${days}d ago`;
 }
 
+function formatCost(cost: number): string {
+  if (cost === 0) return '$0.00';
+  if (cost < 0.01) return `$${cost.toFixed(4)}`;
+  return `$${cost.toFixed(2)}`;
+}
+
+function formatTokens(n: number): string {
+  if (n < 1000) return n.toString();
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}K`;
+  return `${(n / 1_000_000).toFixed(2)}M`;
+}
+
 export function OverviewPage({ title, agentsConfigured, user }: Props) {
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [recentAgents, setRecentAgents] = useState<RecentAgent[]>([]);
+  const [usageToday, setUsageToday] = useState<UsageSummary | null>(null);
 
   useEffect(() => {
     void (async () => {
-      const [activityRes, agentsRes] = await Promise.all([
+      const [activityRes, agentsRes, usageRes] = await Promise.all([
         fetch('/api/activity?limit=8', { credentials: 'include' }),
         fetch('/api/activity/recent-agents?limit=5', { credentials: 'include' }),
+        fetch('/api/activity/usage-summary', { credentials: 'include' }),
       ]);
       if (activityRes.ok) {
         const data = (await activityRes.json()) as { items: ActivityRow[] };
@@ -75,6 +105,10 @@ export function OverviewPage({ title, agentsConfigured, user }: Props) {
       if (agentsRes.ok) {
         const data = (await agentsRes.json()) as { items: RecentAgent[] };
         setRecentAgents(data.items ?? []);
+      }
+      if (usageRes.ok) {
+        const data = (await usageRes.json()) as UsageSummary;
+        setUsageToday(data);
       }
     })();
   }, []);
@@ -129,12 +163,77 @@ export function OverviewPage({ title, agentsConfigured, user }: Props) {
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground">
-                  Pluggable routers on the backend, react-router on the client. 46-test integration suite lives at{' '}
+                  Pluggable routers on the backend, react-router on the client. Integration suite lives at{' '}
                   <code className="font-mono">src/__tests__/</code>.
                 </p>
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">LLM usage (today)</CardTitle>
+              <CardDescription>
+                Token counts and estimated cost across every call the llm-proxy handled.{' '}
+                <NavLink to="/activity" className="text-primary underline-offset-2 hover:underline">
+                  See all →
+                </NavLink>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!usageToday || usageToday.total.request_count === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Nothing logged today. The llm-proxy publishes to Redis channel{' '}
+                  <code className="font-mono">usage:events</code>; admin subscribes and attributes each event
+                  to the agent whose API key produced it.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-4">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Requests</div>
+                      <div className="text-lg font-semibold">
+                        {usageToday.total.request_count.toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Input tokens</div>
+                      <div className="text-lg font-semibold">
+                        {formatTokens(usageToday.total.input_units)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Output tokens</div>
+                      <div className="text-lg font-semibold">
+                        {formatTokens(usageToday.total.output_units)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Cost</div>
+                      <div className="text-lg font-semibold">
+                        {formatCost(usageToday.total.cost_estimate)}
+                      </div>
+                    </div>
+                  </div>
+                  {usageToday.by_service.length > 0 && (
+                    <ul className="divide-y divide-border text-xs">
+                      {usageToday.by_service.map((row) => (
+                        <li key={row.service} className="flex items-center gap-3 py-2">
+                          <Badge variant="outline" className="font-mono text-[10px]">
+                            {row.service}
+                          </Badge>
+                          <span className="min-w-0 flex-1 text-muted-foreground">
+                            {row.request_count} req · {formatTokens(row.total_units)} tokens
+                          </span>
+                          <span className="shrink-0 font-mono">{formatCost(row.cost_estimate)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>

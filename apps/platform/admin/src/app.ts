@@ -31,6 +31,8 @@ import { WorkspaceController } from './controllers/workspace.js';
 import { AgentKeysController } from './controllers/agent-keys.js';
 import { ConfigController } from './controllers/config.js';
 import { ActivityController } from './controllers/activity.js';
+import { UsageEvent } from './models/usage-event.js';
+import { UsageCollector } from './services/usage-collector.js';
 import { createChatRouter } from './routes/chat.js';
 import { createAgentsRouter, createAgentProfilesRouter } from './routes/agents.js';
 import { createSkillsRouter } from './routes/skills.js';
@@ -63,6 +65,8 @@ export interface CreateAppOptions {
   runSeed?: boolean;
   /** Run the config definition seed. Defaults to true. */
   runConfigSeed?: boolean;
+  /** Subscribe to the llm-proxy's `usage:events` Redis channel and persist rows. Defaults to true. */
+  runUsageCollector?: boolean;
 }
 
 export interface AdminApp {
@@ -82,6 +86,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<AdminAp
   const sharedAuthConfig = options.sharedAuthConfig ?? defaultSharedAuthConfig;
   const runSeed = options.runSeed ?? config.nodeEnv === 'development';
   const runConfigSeed = options.runConfigSeed ?? true;
+  const runUsageCollector = options.runUsageCollector ?? true;
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const clientDistDir = path.resolve(__dirname, '../client/dist');
@@ -108,6 +113,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<AdminAp
       AgentApiKey,
       ConfigDefinition,
       ConfigValue,
+      UsageEvent,
     ] as ModelWithAssociate[],
   );
 
@@ -204,10 +210,24 @@ export async function createApp(options: CreateAppOptions = {}): Promise<AdminAp
   const configController = new ConfigController(configService);
   app.use('/api/config', createConfigRouter(configController));
 
-  // Activity — Phase 7. Read-only view on audit_log + Agent.last_active_at.
+  // Activity — read-only view on audit_log, Agent.last_active_at, and the
+  // usage_event rows the collector ingests from the llm-proxy's Redis channel.
   const activityService = new ActivityService();
   const activityController = new ActivityController(activityService);
   app.use('/api/activity', createActivityRouter(activityController));
+
+  let usageCollector: UsageCollector | null = null;
+  if (runUsageCollector) {
+    usageCollector = new UsageCollector(sharedAuthConfig.redis.uri);
+    try {
+      await usageCollector.start();
+    } catch (err) {
+      console.warn(
+        `[admin.usage-collector] failed to start — usage ingest disabled: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      usageCollector = null;
+    }
+  }
 
   app.use('/api/chat', createChatRouter(chatController));
 
@@ -226,6 +246,13 @@ export async function createApp(options: CreateAppOptions = {}): Promise<AdminAp
   chatController.initWebSocket(server);
 
   async function close(): Promise<void> {
+    if (usageCollector) {
+      try {
+        await usageCollector.stop();
+      } catch {
+        // Ignore — subscriber may already be gone.
+      }
+    }
     await new Promise<void>((resolve) => {
       if (!server.listening) {
         resolve();
