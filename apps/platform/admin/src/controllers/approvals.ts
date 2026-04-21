@@ -101,6 +101,7 @@ export class ApprovalsController {
 
   propose = async (req: Request, res: Response): Promise<void> => {
     const session = getSession(req);
+    const agentCtx = req.agentContext;
     const body = asObject(req.body);
     if (!body) {
       res.status(400).json({ error: 'Request body must be a JSON object' });
@@ -108,8 +109,11 @@ export class ApprovalsController {
     }
 
     const action_type = typeof body.action_type === 'string' ? body.action_type.trim() : '';
+    const userSubjectFallback = agentCtx?.agent_id ?? session.userId ?? '';
     const subject_id =
-      typeof body.subject_id === 'string' && body.subject_id.trim() ? body.subject_id.trim() : session.userId!;
+      typeof body.subject_id === 'string' && body.subject_id.trim()
+        ? body.subject_id.trim()
+        : userSubjectFallback;
     const payload = body.payload ?? {};
     const metadata = asObject(body.metadata);
 
@@ -118,17 +122,21 @@ export class ApprovalsController {
       return;
     }
 
+    const proposedBy = agentCtx
+      ? { proposed_by_agent_id: agentCtx.agent_id, proposed_by_agent_name: agentCtx.agent_name }
+      : { proposed_by_email: session.userEmail };
+
     try {
       const item = await this.queue.propose({
         subject_id,
         action_type,
         payload,
         metadata: {
-          proposed_by_email: session.userEmail,
+          ...proposedBy,
           ...(metadata ?? {}),
         },
       });
-      await this.writeAudit(session.userId ?? null, 'approval.propose', item);
+      await this.writeAudit(session.userId ?? agentCtx?.user_id ?? null, 'approval.propose', item);
       this.logOk(req, 'propose', `id=${item.id} action_type=${action_type}`);
       res.status(201).json({ item });
     } catch (err) {

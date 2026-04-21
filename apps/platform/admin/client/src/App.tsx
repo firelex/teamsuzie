@@ -21,6 +21,7 @@ import { AgentEditPage } from './pages/agent-edit.js';
 import { SkillsPage } from './pages/skills.js';
 import { ApprovalsPage } from './pages/approvals.js';
 import { ArtifactsPage } from './pages/artifacts.js';
+import { TokensPage } from './pages/tokens.js';
 
 interface HealthResponse {
   title: string;
@@ -115,17 +116,7 @@ function AppContent({
           <Route path="/skills" element={<SkillsPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/artifacts" element={<ArtifactsPage />} />
-          <Route
-            path="/tokens"
-            element={
-              <PlaceholderPage
-                title="Tokens"
-                description="API keys for service auth and user bearer tokens for mobile/web clients."
-                phase="Phase 5"
-                summary="Issue, label, and revoke keys. Last-used and expiry tracked automatically."
-              />
-            }
-          />
+          <Route path="/tokens" element={<TokensPage />} />
           <Route
             path="/config"
             element={

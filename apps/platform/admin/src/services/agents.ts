@@ -1,4 +1,12 @@
-import { Agent, AgentProfile, User, type AgentStatus, type AgentType } from '@teamsuzie/shared-auth';
+import {
+  Agent,
+  AgentApiKey,
+  AgentProfile,
+  AgentWorkspaceFile,
+  User,
+  type AgentStatus,
+  type AgentType,
+} from '@teamsuzie/shared-auth';
 
 /**
  * OSS-safe subset of Agent.config. The private monorepo has many more fields
@@ -161,6 +169,11 @@ export class AgentsService {
       where: { id, organization_id: organizationId },
     });
     if (!agent) return false;
+    // Cascade-delete the agent's dependent rows so FK constraints don't
+    // block destruction. v1 treats agent delete as a hard sweep; a softer
+    // "archive" mode would preserve these for audit.
+    await AgentApiKey.destroy({ where: { agent_id: agent.id } });
+    await AgentWorkspaceFile.destroy({ where: { agent_id: agent.id } });
     await agent.destroy();
     return true;
   }

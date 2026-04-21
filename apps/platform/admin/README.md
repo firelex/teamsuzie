@@ -45,11 +45,20 @@ This is the thicker successor to the original "chat-only" admin. It ships phase-
 - Artifacts page: filter by agent, DataTable with path / agent / content-type / size / created, row-click dialog with monospace content preview, Download (generates a browser Blob) and Delete
 - **v1 scope note**: this phase handles text artifacts only. Binary outputs (pptx, xlsx, docx) need either a blob column on `AgentWorkspaceFile` or a separate object-storage service — tracked for a follow-on phase
 
+**Phase 5 — tokens**
+
+- `/api/agent-keys` issues named, scope-tagged bearer keys per agent (prefix `dtk_`, shown plaintext once on create, `last_used_at` tracked on use, revoke flips `is_active` + `revoked_at`)
+- User access tokens (prefix `tsu_`) reuse shared-auth's existing `/api/auth/tokens` CRUD — no admin-specific route needed
+- `requireSession` now accepts either a session cookie **or** a `tsu_` user bearer — laptop CLIs and mobile clients can hit the admin API directly
+- `POST /api/approvals` accepts either a session **or** a `dtk_` agent bearer, so agents can propose approvals on their own key. Actor attribution flows through `getRequestActor` → logs and audit entries show `actor=agent:user_id` with `org_id` populated from the agent's org
+- Every create and revoke writes an `AuditLog` row (`api_key.create` / `api_key.revoke`)
+- Agent delete now cascades to its `AgentApiKey` + `AgentWorkspaceFile` rows — no more FK-constraint failures
+- Tokens page: two sections (agent keys + user access tokens), create dialog with scope picker and expiry, one-time plaintext reveal with copy-to-clipboard, revoke with confirm
+
 ## What's coming
 
 | Phase | Surface   | Summary                                                                     |
 | ----- | --------- | --------------------------------------------------------------------------- |
-| 5     | Tokens    | Agent API keys + user bearer tokens                                         |
 | 6     | Config    | Runtime-editable scoped settings (system / org / user / agent)              |
 | 7     | Activity  | Recent sessions, tool calls, token usage                                    |
 

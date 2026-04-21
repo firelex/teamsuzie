@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import {
   Agent,
+  AgentApiKey,
   AgentProfile,
   AgentWorkspaceFile,
   AuditLog,
@@ -25,15 +26,18 @@ import { AgentsController } from './controllers/agents.js';
 import { SkillsController } from './controllers/skills.js';
 import { ApprovalsController } from './controllers/approvals.js';
 import { WorkspaceController } from './controllers/workspace.js';
+import { AgentKeysController } from './controllers/agent-keys.js';
 import { createChatRouter } from './routes/chat.js';
 import { createAgentsRouter, createAgentProfilesRouter } from './routes/agents.js';
 import { createSkillsRouter } from './routes/skills.js';
 import { createApprovalsRouter } from './routes/approvals.js';
 import { createWorkspaceRouter } from './routes/workspace.js';
+import { createAgentKeysRouter } from './routes/agent-keys.js';
 import { ChatProxyService } from './services/chat-proxy.js';
 import { AgentsService } from './services/agents.js';
 import { SkillsService } from './services/skills.js';
 import { WorkspaceService } from './services/workspace.js';
+import { AgentKeysService } from './services/agent-keys.js';
 import { createApprovalQueue } from './services/approvals.js';
 import { ensureSeed } from './services/seed.js';
 import { printStartupError } from './services/startup-errors.js';
@@ -64,6 +68,7 @@ async function main() {
       UserAccessToken,
       AuditLog,
       AgentWorkspaceFile,
+      AgentApiKey,
     ] as ModelWithAssociate[],
   );
 
@@ -157,6 +162,12 @@ async function main() {
   const workspaceService = new WorkspaceService();
   const workspaceController = new WorkspaceController(workspaceService);
   app.use('/api/workspace', createWorkspaceRouter(workspaceController));
+
+  // Agent API keys — Phase 5. User access tokens are handled by shared-auth's
+  // AuthController at /api/auth/tokens and don't need an admin-specific route.
+  const agentKeysService = new AgentKeysService();
+  const agentKeysController = new AgentKeysController(agentKeysService);
+  app.use('/api/agent-keys', createAgentKeysRouter(agentKeysController));
 
   app.use('/api/chat', createChatRouter(chatController));
 
