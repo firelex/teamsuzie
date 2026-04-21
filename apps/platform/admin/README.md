@@ -21,11 +21,18 @@ This is the thicker successor to the original "chat-only" admin. It ships phase-
 - Agents page: list, create, edit, delete with profile/runtime/behaviour form
 - Chat proxy is DB-aware: active agents are unioned with `CHAT_AGENTS` env entries, with a `source=db|env` marker on each row
 
+**Phase 2 — skills**
+
+- `/api/skill-templates` (list + detail) discovers SKILL.md manifests under `packages/skills/templates/`
+- Required context for each skill is derived from `{{TOKEN}}` placeholders in the manifest body
+- Skills page: grid of installed skills with name, description, and required-context badges
+- Agent edit: comma-separated skills input replaced with a checkbox picker sourced from `/api/skill-templates`
+- Ships 5 skills: `file-access`, `hello-world`, `documents`, `presentations`, `spreadsheets`
+
 ## What's coming
 
 | Phase | Surface   | Summary                                                                     |
 | ----- | --------- | --------------------------------------------------------------------------- |
-| 2     | Skills    | Browse skill manifests; attach skills to agents                             |
 | 3     | Approvals | Inbox of agent-proposed actions with approve/reject + audit                 |
 | 4     | Artifacts | Browser for files produced by agents (pptx/xlsx/docx/uploads)               |
 | 5     | Tokens    | Agent API keys + user bearer tokens                                         |

@@ -66,6 +66,9 @@ importers:
       '@teamsuzie/shared-auth':
         specifier: workspace:*
         version: link:../../../packages/shared-auth
+      '@teamsuzie/skills':
+        specifier: workspace:*
+        version: link:../../../packages/skills
       connect-redis:
         specifier: ^8.0.1
         version: 8.1.0(express-session@1.19.0)

@@ -24,6 +24,7 @@ import {
   Textarea,
 } from '@teamsuzie/ui';
 import type { AgentRow } from './agents.js';
+import type { SkillTemplateRow } from './skills.js';
 
 interface ProfileRow {
   id: string;
@@ -44,7 +45,7 @@ interface AgentFormState {
   openclawAgentId: string;
   system_prompt: string;
   text_model: string;
-  skills: string;
+  skills: string[];
   approval_required: boolean;
 }
 
@@ -59,7 +60,7 @@ const EMPTY_FORM: AgentFormState = {
   openclawAgentId: '',
   system_prompt: '',
   text_model: '',
-  skills: '',
+  skills: [],
   approval_required: false,
 };
 
@@ -82,17 +83,12 @@ function agentToForm(row: AgentRow): AgentFormState {
     openclawAgentId: cfg.openclawAgentId ?? '',
     system_prompt: cfg.system_prompt ?? '',
     text_model: cfg.text_model ?? '',
-    skills: (cfg.skills ?? []).join(', '),
+    skills: cfg.skills ?? [],
     approval_required: !!cfg.approval_required,
   };
 }
 
 function formToPayload(form: AgentFormState, { create }: { create: boolean }) {
-  const skills = form.skills
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
   const config: Record<string, unknown> = {
     baseUrl: form.baseUrl.trim().replace(/\/$/, ''),
     approval_required: form.approval_required,
@@ -101,7 +97,7 @@ function formToPayload(form: AgentFormState, { create }: { create: boolean }) {
   if (form.openclawAgentId.trim()) config.openclawAgentId = form.openclawAgentId.trim();
   if (form.system_prompt.trim()) config.system_prompt = form.system_prompt;
   if (form.text_model.trim()) config.text_model = form.text_model.trim();
-  if (skills.length) config.skills = skills;
+  if (form.skills.length) config.skills = form.skills;
 
   const payload: Record<string, unknown> = {
     name: form.name.trim(),
@@ -123,16 +119,24 @@ export function AgentEditPage() {
 
   const [form, setForm] = useState<AgentFormState>(EMPTY_FORM);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
+  const [skillTemplates, setSkillTemplates] = useState<SkillTemplateRow[]>([]);
   const [loading, setLoading] = useState(!isCreate);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
-      const response = await fetch('/api/agent-profiles', { credentials: 'include' });
-      if (response.ok) {
-        const data = (await response.json()) as { items: ProfileRow[] };
+      const [profilesRes, skillsRes] = await Promise.all([
+        fetch('/api/agent-profiles', { credentials: 'include' }),
+        fetch('/api/skill-templates', { credentials: 'include' }),
+      ]);
+      if (profilesRes.ok) {
+        const data = (await profilesRes.json()) as { items: ProfileRow[] };
         setProfiles(data.items ?? []);
+      }
+      if (skillsRes.ok) {
+        const data = (await skillsRes.json()) as { items: SkillTemplateRow[] };
+        setSkillTemplates(data.items ?? []);
       }
     })();
   }, []);
@@ -374,16 +378,49 @@ export function AgentEditPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="skills">Skills</Label>
-                <Input
-                  id="skills"
-                  value={form.skills}
-                  onChange={(e) => setForm({ ...form, skills: e.target.value })}
-                  placeholder="Comma-separated slugs, e.g. file-access, documents"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Phase 2 will replace this with a picker sourced from <code className="font-mono">packages/skills</code>.
-                </p>
+                <Label>Skills</Label>
+                {skillTemplates.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No skills discovered. Drop a SKILL.md under{' '}
+                    <code className="font-mono">packages/skills/templates/</code> and restart admin.
+                  </p>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {skillTemplates.map((skill) => {
+                      const checked = form.skills.includes(skill.slug);
+                      return (
+                        <label
+                          key={skill.slug}
+                          className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 text-sm transition-colors ${
+                            checked
+                              ? 'border-primary/40 bg-primary/5'
+                              : 'border-border hover:bg-muted/40'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-0.5 h-4 w-4"
+                            checked={checked}
+                            onChange={(e) => {
+                              setForm({
+                                ...form,
+                                skills: e.target.checked
+                                  ? [...form.skills, skill.slug]
+                                  : form.skills.filter((s) => s !== skill.slug),
+                              });
+                            }}
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium">{skill.name}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {skill.description || skill.slug}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div className="flex items-center justify-between rounded-md border border-border p-3">
                 <div>

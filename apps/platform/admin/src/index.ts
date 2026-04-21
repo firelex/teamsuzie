@@ -20,10 +20,13 @@ import type { ModelCtor } from 'sequelize-typescript';
 import { config, sharedAuthConfig } from './config.js';
 import { ChatController } from './controllers/chat.js';
 import { AgentsController } from './controllers/agents.js';
+import { SkillsController } from './controllers/skills.js';
 import { createChatRouter } from './routes/chat.js';
 import { createAgentsRouter, createAgentProfilesRouter } from './routes/agents.js';
+import { createSkillsRouter } from './routes/skills.js';
 import { ChatProxyService } from './services/chat-proxy.js';
 import { AgentsService } from './services/agents.js';
+import { SkillsService } from './services/skills.js';
 import { ensureSeed } from './services/seed.js';
 import { printStartupError } from './services/startup-errors.js';
 import { getSession } from './middleware/auth.js';
@@ -126,6 +129,11 @@ async function main() {
   const agentsController = new AgentsController(agentsService);
   app.use('/api/agents', createAgentsRouter(agentsController));
   app.use('/api/agent-profiles', createAgentProfilesRouter(agentsController));
+
+  // Skills — Phase 2. Backed by packages/skills templates on disk.
+  const skillsService = new SkillsService(SkillsService.defaultSkillsDir());
+  const skillsController = new SkillsController(skillsService);
+  app.use('/api/skill-templates', createSkillsRouter(skillsController));
 
   app.use('/api/chat', createChatRouter(chatController));
 

@@ -22,8 +22,8 @@ interface Props {
 const ROADMAP: { phase: string; name: string; status: 'live' | 'next' | 'planned' }[] = [
   { phase: '0', name: 'Foundations (auth + routed shell)', status: 'live' },
   { phase: '1', name: 'Agent registry', status: 'live' },
-  { phase: '2', name: 'Skills management', status: 'next' },
-  { phase: '3', name: 'Approvals inbox', status: 'planned' },
+  { phase: '2', name: 'Skills management', status: 'live' },
+  { phase: '3', name: 'Approvals inbox', status: 'next' },
   { phase: '4', name: 'Artifacts browser', status: 'planned' },
   { phase: '5', name: 'Tokens & API keys', status: 'planned' },
   { phase: '6', name: 'Config surface', status: 'planned' },

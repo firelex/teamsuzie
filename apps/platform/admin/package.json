@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@teamsuzie/shared-auth": "workspace:*",
+    "@teamsuzie/skills": "workspace:*",
     "connect-redis": "^8.0.1",
     "cors": "^2.8.5",
     "csrf": "^3.1.0",

@@ -18,6 +18,7 @@ import { OverviewPage } from './pages/overview.js';
 import { PlaceholderPage } from './pages/placeholder.js';
 import { AgentsPage } from './pages/agents.js';
 import { AgentEditPage } from './pages/agent-edit.js';
+import { SkillsPage } from './pages/skills.js';
 
 interface HealthResponse {
   title: string;
@@ -109,17 +110,7 @@ function AppContent({
           <Route path="/agents" element={<AgentsPage />} />
           <Route path="/agents/new" element={<AgentEditPage />} />
           <Route path="/agents/:id" element={<AgentEditPage />} />
-          <Route
-            path="/skills"
-            element={
-              <PlaceholderPage
-                title="Skills"
-                description="Browse installed skills, inspect manifests, and attach them to agents."
-                phase="Phase 2"
-                summary="Skill manifests, per-agent toggles, and required env/config hints."
-              />
-            }
-          />
+          <Route path="/skills" element={<SkillsPage />} />
           <Route
             path="/approvals"
             element={
