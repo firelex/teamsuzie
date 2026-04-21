@@ -70,6 +70,13 @@ export const config = {
     password: process.env.SEED_PASSWORD || 'admin12345',
     name: process.env.SEED_NAME || 'Admin',
   },
+  // Master secret used to encrypt config_value.value_encrypted. In dev it
+  // falls back to COOKIE_SECRET so a single-secret .env keeps working; in
+  // prod it must be explicitly set.
+  configSecret:
+    process.env.CONFIG_SECRET ||
+    process.env.COOKIE_SECRET ||
+    'dev-only-config-secret',
 };
 
 export const sharedAuthConfig: SharedAuthConfig = {

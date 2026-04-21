@@ -22,6 +22,7 @@ import { SkillsPage } from './pages/skills.js';
 import { ApprovalsPage } from './pages/approvals.js';
 import { ArtifactsPage } from './pages/artifacts.js';
 import { TokensPage } from './pages/tokens.js';
+import { ConfigPage } from './pages/config.js';
 
 interface HealthResponse {
   title: string;
@@ -117,17 +118,7 @@ function AppContent({
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/artifacts" element={<ArtifactsPage />} />
           <Route path="/tokens" element={<TokensPage />} />
-          <Route
-            path="/config"
-            element={
-              <PlaceholderPage
-                title="Config"
-                description="Runtime-editable settings: endpoints, models, feature toggles."
-                phase="Phase 6"
-                summary="Scoped config (system > org > user > agent) with encrypted secrets."
-              />
-            }
-          />
+          <Route path="/config" element={<ConfigPage />} />
           <Route
             path="/activity"
             element={

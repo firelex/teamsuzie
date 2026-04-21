@@ -4,6 +4,7 @@ import type { AgentConfig } from '../config.js';
 import { config } from '../config.js';
 import { OpenClawClient, type ChatMessage } from './openclaw-client.js';
 import type { AdminAgentConfig } from './agents.js';
+import type { ConfigService } from './config.js';
 
 export type AgentSource = 'db' | 'env';
 
@@ -19,6 +20,8 @@ interface ResolvedAgent extends AgentConfig {
   source: AgentSource;
   /** Optional system prompt to inject at conversation start (DB agents only). */
   system_prompt?: string;
+  /** Per-agent model override (DB agents only). */
+  model?: string;
 }
 
 function dbAgentToResolved(agent: Agent): ResolvedAgent | null {
@@ -35,6 +38,7 @@ function dbAgentToResolved(agent: Agent): ResolvedAgent | null {
     apiKey: typeof cfg.apiKey === 'string' ? cfg.apiKey : undefined,
     openclawAgentId: typeof cfg.openclawAgentId === 'string' ? cfg.openclawAgentId : undefined,
     system_prompt: typeof cfg.system_prompt === 'string' ? cfg.system_prompt : undefined,
+    model: typeof cfg.text_model === 'string' ? cfg.text_model : undefined,
     source: 'db',
   };
 }
@@ -46,6 +50,11 @@ function envAgentToResolved(agent: AgentConfig): ResolvedAgent {
 export class ChatProxyService {
   private readonly openClawClient = new OpenClawClient();
   private readonly sessionKeys = new Map<string, string>();
+  private readonly configService: ConfigService | null;
+
+  constructor(configService: ConfigService | null = null) {
+    this.configService = configService;
+  }
 
   /**
    * Merge DB-managed agents with env-configured CHAT_AGENTS. DB entries win on id
@@ -85,6 +94,29 @@ export class ChatProxyService {
     throw new Error(`Unknown agent: ${agentId}`);
   }
 
+  /**
+   * Resolution order for the chat `model` field:
+   *   1. agent.config.text_model (DB agents only)
+   *   2. config `chat.default_model` at agent scope, then global
+   *   3. the literal string 'default' (OpenClaw-compatible runtimes treat
+   *      this as "use whatever the server has configured")
+   */
+  private async resolveModel(agent: ResolvedAgent): Promise<string> {
+    if (agent.model) return agent.model;
+    if (this.configService) {
+      const scopes =
+        agent.source === 'db'
+          ? [
+              { scope: 'agent' as const, scope_id: agent.id },
+              { scope: 'global' as const, scope_id: null },
+            ]
+          : [{ scope: 'global' as const, scope_id: null }];
+      const fromConfig = await this.configService.resolveValue('chat.default_model', scopes);
+      if (fromConfig) return fromConfig;
+    }
+    return 'default';
+  }
+
   async listAgents(): Promise<AgentInfo[]> {
     const resolved = await this.resolveAll();
     return Promise.all(
@@ -118,6 +150,7 @@ export class ChatProxyService {
   ): AsyncGenerator<string, void, unknown> {
     const agent = await this.resolveOne(agentId);
     const sessionKey = this.getOrCreateSession(connectionId);
+    const model = await this.resolveModel(agent);
 
     // Inject the agent's system prompt (if any) as the first message for DB agents.
     // Env agents don't carry a system prompt today; they rely on the runtime's own config.
@@ -126,7 +159,12 @@ export class ChatProxyService {
         ? [{ role: 'system', content: agent.system_prompt }, ...messages]
         : messages;
 
-    const reader = await this.openClawClient.chatCompletionStream(agent, preparedMessages, sessionKey);
+    const reader = await this.openClawClient.chatCompletionStream(
+      agent,
+      preparedMessages,
+      sessionKey,
+      model,
+    );
     yield* this.openClawClient.readTextStream(reader);
   }
 }

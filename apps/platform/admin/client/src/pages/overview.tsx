@@ -26,8 +26,8 @@ const ROADMAP: { phase: string; name: string; status: 'live' | 'next' | 'planned
   { phase: '3', name: 'Approvals inbox', status: 'live' },
   { phase: '4', name: 'Artifacts browser', status: 'live' },
   { phase: '5', name: 'Tokens & API keys', status: 'live' },
-  { phase: '6', name: 'Config surface', status: 'next' },
-  { phase: '7', name: 'Activity & usage', status: 'planned' },
+  { phase: '6', name: 'Config surface', status: 'live' },
+  { phase: '7', name: 'Activity & usage', status: 'next' },
 ];
 
 function variantFor(status: 'live' | 'next' | 'planned'): 'default' | 'secondary' | 'outline' {

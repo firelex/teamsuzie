@@ -9,6 +9,8 @@ import {
   AgentProfile,
   AgentWorkspaceFile,
   AuditLog,
+  ConfigDefinition,
+  ConfigValue,
   OrgDomain,
   Organization,
   OrganizationMember,
@@ -27,17 +29,20 @@ import { SkillsController } from './controllers/skills.js';
 import { ApprovalsController } from './controllers/approvals.js';
 import { WorkspaceController } from './controllers/workspace.js';
 import { AgentKeysController } from './controllers/agent-keys.js';
+import { ConfigController } from './controllers/config.js';
 import { createChatRouter } from './routes/chat.js';
 import { createAgentsRouter, createAgentProfilesRouter } from './routes/agents.js';
 import { createSkillsRouter } from './routes/skills.js';
 import { createApprovalsRouter } from './routes/approvals.js';
 import { createWorkspaceRouter } from './routes/workspace.js';
 import { createAgentKeysRouter } from './routes/agent-keys.js';
+import { createConfigRouter } from './routes/config.js';
 import { ChatProxyService } from './services/chat-proxy.js';
 import { AgentsService } from './services/agents.js';
 import { SkillsService } from './services/skills.js';
 import { WorkspaceService } from './services/workspace.js';
 import { AgentKeysService } from './services/agent-keys.js';
+import { ConfigService, DEFAULT_DEFINITIONS } from './services/config.js';
 import { createApprovalQueue } from './services/approvals.js';
 import { ensureSeed } from './services/seed.js';
 import { printStartupError } from './services/startup-errors.js';
@@ -69,6 +74,8 @@ async function main() {
       AuditLog,
       AgentWorkspaceFile,
       AgentApiKey,
+      ConfigDefinition,
+      ConfigValue,
     ] as ModelWithAssociate[],
   );
 
@@ -99,8 +106,22 @@ async function main() {
   const sessionService = new SessionService(sharedAuthConfig);
   sessionService.init(app);
 
+  // Config — Phase 6. Seed baseline definitions on boot so the UI always
+  // has something to edit; chat proxy reads its default model from here.
+  const configService = new ConfigService(config.configSecret);
+  try {
+    const { created } = await configService.ensureDefinitions(DEFAULT_DEFINITIONS);
+    if (created > 0) {
+      console.log(`[config] seeded ${created} definition(s)`);
+    }
+  } catch (err) {
+    console.warn(`[config] definition seed skipped: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   // Chat proxy — survives from the pre-thicken admin. Powers the /chat page.
-  const chatProxyService = new ChatProxyService();
+  // Reads its default model name from config (system scope, key
+  // 'chat.default_model') with an env fallback.
+  const chatProxyService = new ChatProxyService(configService);
   const chatController = new ChatController(chatProxyService);
 
   // Open endpoint: surfaces title + (dev-only) demo creds for the login page.
@@ -168,6 +189,10 @@ async function main() {
   const agentKeysService = new AgentKeysService();
   const agentKeysController = new AgentKeysController(agentKeysService);
   app.use('/api/agent-keys', createAgentKeysRouter(agentKeysController));
+
+  // Config — Phase 6. CRUD on ConfigDefinition / ConfigValue.
+  const configController = new ConfigController(configService);
+  app.use('/api/config', createConfigRouter(configController));
 
   app.use('/api/chat', createChatRouter(chatController));
 

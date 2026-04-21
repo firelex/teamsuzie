@@ -55,11 +55,21 @@ This is the thicker successor to the original "chat-only" admin. It ships phase-
 - Agent delete now cascades to its `AgentApiKey` + `AgentWorkspaceFile` rows — no more FK-constraint failures
 - Tokens page: two sections (agent keys + user access tokens), create dialog with scope picker and expiry, one-time plaintext reveal with copy-to-clipboard, revoke with confirm
 
+**Phase 6 — config**
+
+- `/api/config/definitions` + `/api/config/values` (list) + `/api/config/values/:key` (get/put/delete) backed by `ConfigDefinition` / `ConfigValue`; values AES-256-GCM encrypted at rest with a secret derived from `CONFIG_SECRET` (falls back to `COOKIE_SECRET` in dev)
+- Scope hierarchy: `agent` → `user` → `org` → `global` → definition `default_value`. Most-specific wins. Per-agent and per-org overrides fully supported by the API; UI edits the system (`global`) scope only in v1
+- Secrets (`is_sensitive=true`) are never returned in plaintext over HTTP — lists/gets redact to `null`, UI renders `[REDACTED]` with "Replace" as the action
+- Value-type coercion on `PUT`: numbers match `/^-?\d+(\.\d+)?$/`, booleans must be `"true"` or `"false"`, JSON is parsed, `validation_schema.enum`/`minLength`/`maxLength` respected
+- Every `create` / `update` / `delete` writes an `AuditLog` row (`config.*`)
+- `ChatProxyService` reads `chat.default_model` in-process (agent-scope → global → definition default → `"default"`) — proves the runtime-consumer path
+- Ships four seeded definitions: `admin.title`, `chat.default_model`, `approvals.require_by_default`, `integrations.webhook_secret`
+- Config page: category-grouped cards (platform / ai / service / infrastructure / oauth), per-row status badge (`default` / `system` / `agent`…), `requires-restart` flag, inline Edit or Replace (for secrets), Reset to revert to the definition's default
+
 ## What's coming
 
 | Phase | Surface   | Summary                                                                     |
 | ----- | --------- | --------------------------------------------------------------------------- |
-| 6     | Config    | Runtime-editable scoped settings (system / org / user / agent)              |
 | 7     | Activity  | Recent sessions, tool calls, token usage                                    |
 
 ## Run (local)

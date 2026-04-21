@@ -29,6 +29,7 @@ export class OpenClawClient {
     agent: AgentConfig,
     messages: ChatMessage[],
     sessionKey?: string,
+    model: string = 'default',
   ): Promise<ReadableStreamDefaultReader<Uint8Array>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -48,7 +49,7 @@ export class OpenClawClient {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        model: 'default',
+        model,
         messages,
         stream: true,
       }),
