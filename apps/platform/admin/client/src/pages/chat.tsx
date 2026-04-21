@@ -18,6 +18,7 @@ interface AgentInfo {
   name: string;
   description?: string;
   running: boolean;
+  source: 'db' | 'env';
 }
 
 interface Message {
@@ -241,7 +242,14 @@ export function ChatPage() {
                           }`}
                         />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium">{agent.name}</span>
+                          <span className="flex items-center gap-1.5 truncate font-medium">
+                            <span className="truncate">{agent.name}</span>
+                            {agent.source === 'env' && (
+                              <span className="rounded-sm bg-muted px-1 py-0.5 text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
+                                env
+                              </span>
+                            )}
+                          </span>
                           <span className="block truncate text-xs text-muted-foreground">
                             {agent.description || (agent.running ? 'Reachable' : 'Not reachable')}
                           </span>

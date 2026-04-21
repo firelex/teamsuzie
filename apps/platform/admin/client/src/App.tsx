@@ -16,6 +16,8 @@ import { LoginPage } from './pages/login.js';
 import { ChatPage } from './pages/chat.js';
 import { OverviewPage } from './pages/overview.js';
 import { PlaceholderPage } from './pages/placeholder.js';
+import { AgentsPage } from './pages/agents.js';
+import { AgentEditPage } from './pages/agent-edit.js';
 
 interface HealthResponse {
   title: string;
@@ -104,17 +106,9 @@ function AppContent({
             element={<OverviewPage title={health.title} agentsConfigured={health.agentsConfigured} user={user} />}
           />
           <Route path="/chat" element={<ChatPage />} />
-          <Route
-            path="/agents"
-            element={
-              <PlaceholderPage
-                title="Agents"
-                description="Create and manage agents: runtime type, model, system prompt, skills, approval policy."
-                phase="Phase 1"
-                summary="Full CRUD for agents, attached skills, and runtime config. Extracted from the private monorepo."
-              />
-            }
-          />
+          <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/agents/new" element={<AgentEditPage />} />
+          <Route path="/agents/:id" element={<AgentEditPage />} />
           <Route
             path="/skills"
             element={

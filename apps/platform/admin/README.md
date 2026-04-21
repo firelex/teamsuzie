@@ -4,19 +4,27 @@ OSS admin control plane for the Team Suzie stack. **Port 3008** (backend) / **51
 
 This is the thicker successor to the original "chat-only" admin. It ships phase-by-phase — Phase 0 (this one) wires the foundations that every subsequent phase plugs into.
 
-## Phase 0 — what's live
+## What's live
 
-- Routed React shell: Overview, Chat, and placeholder pages for Agents / Skills / Approvals / Artifacts / Tokens / Config / Activity
+**Phase 0 — foundations**
+
+- Routed React shell: Overview, Chat, and placeholder pages for Skills / Approvals / Artifacts / Tokens / Config / Activity
 - Session-based auth via `@teamsuzie/shared-auth` (login, logout, `/api/session`)
 - Postgres + Redis backed by `SequelizeService` + `SessionService`
 - Dev-only seed: admin + demo users shown on the login page
-- The original OpenClaw chat proxy (HTTP + WebSocket streaming) now lives under the **Chat** tab
+- The original OpenClaw chat proxy (HTTP + WebSocket streaming) lives under the **Chat** tab
+
+**Phase 1 — agent registry**
+
+- CRUD endpoints at `/api/agents` (session-auth, org-scoped)
+- `/api/agent-profiles` lists seeded profile templates (Assistant, Researcher)
+- Agents page: list, create, edit, delete with profile/runtime/behaviour form
+- Chat proxy is DB-aware: active agents are unioned with `CHAT_AGENTS` env entries, with a `source=db|env` marker on each row
 
 ## What's coming
 
 | Phase | Surface   | Summary                                                                     |
 | ----- | --------- | --------------------------------------------------------------------------- |
-| 1     | Agents    | CRUD, runtime type (direct / openclaw), model, system prompt, skills, approval policy |
 | 2     | Skills    | Browse skill manifests; attach skills to agents                             |
 | 3     | Approvals | Inbox of agent-proposed actions with approve/reject + audit                 |
 | 4     | Artifacts | Browser for files produced by agents (pptx/xlsx/docx/uploads)               |
