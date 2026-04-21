@@ -6,6 +6,7 @@ import { createServer } from 'node:http';
 import {
   Agent,
   AgentProfile,
+  AuditLog,
   OrgDomain,
   Organization,
   OrganizationMember,
@@ -21,12 +22,15 @@ import { config, sharedAuthConfig } from './config.js';
 import { ChatController } from './controllers/chat.js';
 import { AgentsController } from './controllers/agents.js';
 import { SkillsController } from './controllers/skills.js';
+import { ApprovalsController } from './controllers/approvals.js';
 import { createChatRouter } from './routes/chat.js';
 import { createAgentsRouter, createAgentProfilesRouter } from './routes/agents.js';
 import { createSkillsRouter } from './routes/skills.js';
+import { createApprovalsRouter } from './routes/approvals.js';
 import { ChatProxyService } from './services/chat-proxy.js';
 import { AgentsService } from './services/agents.js';
 import { SkillsService } from './services/skills.js';
+import { createApprovalQueue } from './services/approvals.js';
 import { ensureSeed } from './services/seed.js';
 import { printStartupError } from './services/startup-errors.js';
 import { getSession } from './middleware/auth.js';
@@ -54,6 +58,7 @@ async function main() {
       Agent,
       OrgDomain,
       UserAccessToken,
+      AuditLog,
     ] as ModelWithAssociate[],
   );
 
@@ -134,6 +139,12 @@ async function main() {
   const skillsService = new SkillsService(SkillsService.defaultSkillsDir());
   const skillsController = new SkillsController(skillsService);
   app.use('/api/skill-templates', createSkillsRouter(skillsController));
+
+  // Approvals — Phase 3. In-memory queue for v1; swap for a DB-backed store
+  // once we need persistence across process restarts.
+  const approvalQueue = createApprovalQueue();
+  const approvalsController = new ApprovalsController(approvalQueue);
+  app.use('/api/approvals', createApprovalsRouter(approvalsController));
 
   app.use('/api/chat', createChatRouter(chatController));
 

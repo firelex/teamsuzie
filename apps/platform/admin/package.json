@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@teamsuzie/approvals": "workspace:*",
     "@teamsuzie/shared-auth": "workspace:*",
     "@teamsuzie/skills": "workspace:*",
     "connect-redis": "^8.0.1",

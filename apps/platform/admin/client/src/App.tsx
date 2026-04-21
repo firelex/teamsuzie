@@ -19,6 +19,7 @@ import { PlaceholderPage } from './pages/placeholder.js';
 import { AgentsPage } from './pages/agents.js';
 import { AgentEditPage } from './pages/agent-edit.js';
 import { SkillsPage } from './pages/skills.js';
+import { ApprovalsPage } from './pages/approvals.js';
 
 interface HealthResponse {
   title: string;
@@ -111,17 +112,7 @@ function AppContent({
           <Route path="/agents/new" element={<AgentEditPage />} />
           <Route path="/agents/:id" element={<AgentEditPage />} />
           <Route path="/skills" element={<SkillsPage />} />
-          <Route
-            path="/approvals"
-            element={
-              <PlaceholderPage
-                title="Approvals"
-                description="Pending actions proposed by agents. Approve or reject with an audit trail."
-                phase="Phase 3"
-                summary="Inbox of agent-proposed actions with payload, reason, and audit history."
-              />
-            }
-          />
+          <Route path="/approvals" element={<ApprovalsPage />} />
           <Route
             path="/artifacts"
             element={

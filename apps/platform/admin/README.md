@@ -29,11 +29,18 @@ This is the thicker successor to the original "chat-only" admin. It ships phase-
 - Agent edit: comma-separated skills input replaced with a checkbox picker sourced from `/api/skill-templates`
 - Ships 5 skills: `file-access`, `hello-world`, `documents`, `presentations`, `spreadsheets`
 
+**Phase 3 — approvals**
+
+- `/api/approvals` surfaces a human-in-the-loop queue backed by `@teamsuzie/approvals` (in-memory store for v1)
+- `GET /api/approvals?status=pending|approved|rejected|dispatched|failed` (list) + `GET /:id` (detail) + `POST /` (propose) + `POST /:id/review` + `GET /action-types`
+- Approve flow auto-dispatches when a handler is registered for the item's `action_type`; otherwise the item stays in `approved` for manual follow-up (future phases will register specific dispatchers)
+- Every propose + review writes an `AuditLog` row — actor, action_type, verdict, outcome — so the trail survives even though the queue itself is in-memory
+- Approvals page: tab filter by status, DataTable with approve/reject actions on pending rows, click-row dialog showing payload / metadata / review / dispatch detail
+
 ## What's coming
 
 | Phase | Surface   | Summary                                                                     |
 | ----- | --------- | --------------------------------------------------------------------------- |
-| 3     | Approvals | Inbox of agent-proposed actions with approve/reject + audit                 |
 | 4     | Artifacts | Browser for files produced by agents (pptx/xlsx/docx/uploads)               |
 | 5     | Tokens    | Agent API keys + user bearer tokens                                         |
 | 6     | Config    | Runtime-editable scoped settings (system / org / user / agent)              |
