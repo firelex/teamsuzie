@@ -33,4 +33,4 @@ Set these in `.env`:
 
 This is the simplest OpenClaw-oriented starter template in the repo. It is meant to be copied, renamed, and adapted into your own agentic application when you want the Team Suzie + OpenClaw path.
 
-If you want the generic baseline without OpenClaw-specific headers or model naming, use [apps/starters/starter-chat](/Users/mattsinalco/mathias/apps/teamsuzie_oss/apps/starters/starter-chat/README.md).
+If you want the generic baseline without OpenClaw-specific headers or model naming, use [apps/starters/starter-chat](../starter-chat/README.md).
