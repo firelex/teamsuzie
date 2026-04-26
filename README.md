@@ -44,15 +44,16 @@ No need to read the code — your assistant will.
 
 ### 3. Pick a starter template
 
-Three templates live in `apps/starters/`. Copy one, rename it, and make it yours.
+Four templates live in `apps/starters/`. Copy one, rename it, and make it yours.
 
 | If you want… | Use this starter | Notes |
 |---|---|---|
-| A chat app on **any OpenAI-compatible backend** (OpenAI, Anthropic via proxy, local models, our `llm-proxy`) | [`starter-chat`](apps/starters/starter-chat) | Simplest path. Tool-use loop runs in the starter's own backend — no second runtime needed. |
+| A chat app on **any OpenAI-compatible backend** (OpenAI, Anthropic via proxy, local models, our `llm-proxy`) | [`starter-chat`](apps/starters/starter-chat) | Simplest path. Tool-use loop runs in the starter's own backend — no second runtime needed. Express + Vite + React, runs locally. |
+| The **same chat app, deployable to Vercel** | [`starter-chat-vercel`](apps/starters/starter-chat-vercel) | Next.js 15 / App Router. Same tool-use loop, skills bridge, and MCP client — but with serverless-honest constraints (no stdio MCP, no filesystem skill catalog, in-memory approvals reset on cold start). The starter's README spells out exactly what's not supported. |
 | A chat app on an **OpenClaw agent runtime** (server-side session continuity, runtime-managed tool calls, addressable agent identity) | [`starter-chat-openclaw`](apps/starters/starter-chat-openclaw) | Pick this when you want the agent loop owned by [OpenClaw](https://github.com/openclaw) instead of by your app. |
 | An **internal tool / ops console** (Postgres-backed tables, auth-guarded pages, approval-gated mutations) | [`starter-ops-console`](apps/starters/starter-ops-console) | Pick this when your app is mostly a tool. Destructive actions are routed through the approval queue by default. Add a chat surface yourself if you want one. |
 
-All three are small Express + React apps. They're meant to be copied and extended.
+The first three are Express + Vite + React. `starter-chat-vercel` is Next.js. All meant to be copied and extended.
 
 ### 4. Pick a backend
 
@@ -324,7 +325,8 @@ apps/examples  # small reference services for extension contracts
 | `xlsx-agent` | 3012 | LLM-powered spreadsheet generation |
 | `admin` | 3008 | Operator control plane — agents, skills, approvals, artifacts, tokens, runtime config, activity feed, and the original browser chat console |
 | `skill-catalog-host` | 3021 | Example external skill catalog for `HttpSkillSource` |
-| `starter-chat` | 16311 | Generic full-stack chat starter |
+| `starter-chat` | 16311 | Generic full-stack chat starter (Express + Vite + React) |
+| `starter-chat-vercel` | 19311 | Same agent core, Next.js 15 / Vercel-deployable variant |
 | `starter-chat-openclaw` | 14311 | OpenClaw-oriented chat starter |
 | `starter-ops-console` | 18311 | Internal-tool / ops-console starter with approval-gated destructive actions |
 

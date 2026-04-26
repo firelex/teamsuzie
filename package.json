@@ -24,6 +24,7 @@
     "dev:xlsx-agent": "cd apps/agents/xlsx-agent && python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 3012",
     "test:xlsx-agent": "cd apps/agents/xlsx-agent && python3 -m pytest",
     "dev:starter-chat": "pnpm --filter @teamsuzie/starter-chat dev",
+    "dev:starter-chat-vercel": "pnpm --filter @teamsuzie/starter-chat-vercel dev",
     "dev:starter-chat-openclaw": "pnpm --filter @teamsuzie/starter-chat-openclaw dev",
     "dev:starter-ops-console": "pnpm --filter @teamsuzie/starter-ops-console dev",
     "seed:starter-ops-console": "pnpm --filter @teamsuzie/starter-ops-console seed",

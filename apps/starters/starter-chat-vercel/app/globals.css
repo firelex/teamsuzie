@@ -1,0 +1,48 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-background: oklch(100% 0 0);
+  --color-foreground: oklch(15% 0 0);
+  --color-muted: oklch(96% 0 0);
+  --color-muted-foreground: oklch(45% 0 0);
+  --color-card: oklch(100% 0 0);
+  --color-border: oklch(90% 0 0);
+  --color-accent: oklch(96% 0 0);
+  --color-primary: oklch(15% 0 0);
+  --color-destructive: oklch(55% 0.22 25);
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-background: oklch(13% 0 0);
+    --color-foreground: oklch(96% 0 0);
+    --color-muted: oklch(18% 0 0);
+    --color-muted-foreground: oklch(65% 0 0);
+    --color-card: oklch(15% 0 0);
+    --color-border: oklch(22% 0 0);
+    --color-accent: oklch(20% 0 0);
+    --color-primary: oklch(96% 0 0);
+    --color-destructive: oklch(65% 0.22 25);
+  }
+}
+
+html,
+body {
+  height: 100%;
+}
+
+@keyframes typing {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
+}
+
+.typing-dot {
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 9999px;
+  background-color: currentColor;
+  animation: typing 1.4s infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
