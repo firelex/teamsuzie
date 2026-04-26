@@ -9,6 +9,13 @@ import { cn } from "../lib/utils"
  * `aria-current` for selection state if you want it.
  *
  * Use `asChild` to render as a different element (e.g. a router link).
+ *
+ * Layout note: the card stretches to fill its grid cell (`h-full`). Pair
+ * with `auto-rows-fr` on the parent grid for visually consistent rows even
+ * when descriptions vary in length.
+ *
+ * Pass `disabled` to render a visibly faded, non-interactive card — useful
+ * for "coming soon" entries in a catalog.
  */
 function PromptCard({
   className,
@@ -21,9 +28,10 @@ function PromptCard({
       data-slot="prompt-card"
       type={asChild ? undefined : "button"}
       className={cn(
-        "group flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-4 text-left transition-colors",
+        "group flex h-full flex-col gap-2 rounded-xl border border-border bg-card px-4 py-4 text-left transition-colors",
         "hover:border-foreground/20 hover:bg-accent",
         "focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+        "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-card",
         className
       )}
       {...props}
@@ -68,7 +76,9 @@ function PromptCardDescription({
   return (
     <div
       data-slot="prompt-card-description"
-      className={cn("text-xs text-muted-foreground", className)}
+      // Clamp to three lines so cards don't bloat on long descriptions —
+      // pair with auto-rows-fr on the grid for consistent card heights.
+      className={cn("line-clamp-3 text-xs text-muted-foreground", className)}
       {...props}
     />
   )
