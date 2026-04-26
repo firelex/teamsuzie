@@ -1,4 +1,4 @@
-import { findTool, toOpenAITools } from './tools/index.js';
+import { toOpenAITools } from './tools/index.js';
 import type { AnyToolDefinition, OpenAITool, ToolContext } from './tools/index.js';
 
 export type ChatMessageRole = 'system' | 'user' | 'assistant' | 'tool';
@@ -40,6 +40,8 @@ export interface RunChatTurnOptions {
   messages: ChatMessage[];
   tools: AnyToolDefinition[];
   toolCtx: ToolContext;
+  /** Optional system prompt prepended to messages (e.g. installed-skill markdown). */
+  systemPrompt?: string;
   maxIterations?: number;
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
@@ -162,9 +164,11 @@ export async function* readChatStream(
 }
 
 export async function* runChatTurn(opts: RunChatTurnOptions): AsyncGenerator<ChatStreamEvent, void, unknown> {
-  const { agent, tools, toolCtx, signal } = opts;
+  const { agent, tools, toolCtx, signal, systemPrompt } = opts;
   const fetchImpl = opts.fetchImpl ?? toolCtx.fetchImpl ?? fetch;
-  const messages: ChatMessage[] = [...opts.messages];
+  const messages: ChatMessage[] = systemPrompt
+    ? [{ role: 'system', content: systemPrompt }, ...opts.messages]
+    : [...opts.messages];
   const openaiTools = toOpenAITools(tools);
   const maxIterations = opts.maxIterations ?? 6;
 
@@ -207,7 +211,7 @@ export async function* runChatTurn(opts: RunChatTurnOptions): AsyncGenerator<Cha
 
       yield { type: 'tool_call', id: call.id, name: call.name, args: parsedArgs };
 
-      const tool = findTool(call.name);
+      const tool = tools.find((t) => t.name === call.name);
       let resultPayload: unknown;
 
       if (!tool) {

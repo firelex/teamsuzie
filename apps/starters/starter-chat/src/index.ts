@@ -6,19 +6,79 @@ import { fileURLToPath } from 'node:url';
 import { ApprovalQueue, InMemoryApprovalStore } from '@teamsuzie/approvals';
 import { config } from './config.js';
 import { runChatTurn, type ChatMessage } from './chat-provider.js';
-import { tools } from './tools/index.js';
-import type { ToolContext } from './tools/index.js';
+import { loadSkills, type SkillLoadResult } from './skills.js';
+import { connectMcpServers, parseMcpConfigFile, type McpManager } from './mcp.js';
+import { tools as builtInTools } from './tools/index.js';
+import type { AnyToolDefinition, ToolContext } from './tools/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistDir = path.resolve(__dirname, '../client/dist');
 
 const approvals = new ApprovalQueue({ store: new InMemoryApprovalStore() });
 
-const toolCtx: ToolContext = {
+let skillState: SkillLoadResult = { skills: [], systemPrompt: '', derivedHosts: [] };
+let mcp: McpManager = { tools: [], status: [], shutdown: async () => {} };
+
+function activeTools(): AnyToolDefinition[] {
+  return [...builtInTools, ...mcp.tools];
+}
+
+async function bootstrapMcp(): Promise<void> {
+  if (!config.mcp.configPath) return;
+  try {
+    const servers = parseMcpConfigFile(config.mcp.configPath);
+    if (servers.length === 0) return;
+    mcp = await connectMcpServers({ servers });
+    for (const status of mcp.status) {
+      if (status.connected) {
+        console.log(`MCP server "${status.name}" connected (${status.toolCount} tool(s))`);
+      } else {
+        console.warn(`MCP server "${status.name}" failed: ${status.error ?? 'unknown error'}`);
+      }
+    }
+  } catch (error) {
+    console.error('MCP bootstrap failed:', error instanceof Error ? error.message : error);
+  }
+}
+
+async function bootstrapSkills(): Promise<void> {
+  if (!config.skills.skillsDir && !config.skills.catalogUrl) return;
+  try {
+    skillState = await loadSkills({
+      skillsDir: config.skills.skillsDir,
+      catalogUrl: config.skills.catalogUrl,
+      catalogToken: config.skills.catalogToken,
+      allow: config.skills.allow.length ? config.skills.allow : undefined,
+      renderContext: config.skills.renderContext,
+    });
+    if (skillState.skills.length > 0) {
+      console.log(
+        `Loaded ${skillState.skills.length} skill(s): ${skillState.skills
+          .map((s) => `${s.skillName} (${s.sourceId})`)
+          .join(', ')}`,
+      );
+    }
+  } catch (error) {
+    console.error('Skill load failed:', error instanceof Error ? error.message : error);
+  }
+}
+
+let toolCtx: ToolContext = {
   approvals,
   vectorDbBaseUrl: config.vectorDb.baseUrl,
   vectorDbApiKey: config.vectorDb.apiKey,
+  allowedHttpHosts: [...config.tools.allowedHttpHosts],
 };
+
+function rebuildToolCtx(): void {
+  const hosts = [...new Set([...config.tools.allowedHttpHosts, ...skillState.derivedHosts])];
+  toolCtx = {
+    approvals,
+    vectorDbBaseUrl: config.vectorDb.baseUrl,
+    vectorDbApiKey: config.vectorDb.apiKey,
+    allowedHttpHosts: hosts,
+  };
+}
 
 const app = express();
 app.use(cors({ origin: config.allowedOrigin, credentials: true }));
@@ -58,7 +118,15 @@ app.get('/api/health', async (_req, res) => {
         description: config.agent.description,
         reachable,
       },
-      tools: tools.map((t) => ({ name: t.name, description: t.description })),
+      tools: activeTools().map((t) => ({ name: t.name, description: t.description })),
+      skills: skillState.skills.map((s) => ({
+        skillName: s.skillName,
+        name: s.name,
+        description: s.description,
+        sourceId: s.sourceId,
+      })),
+      mcp: mcp.status,
+      allowedHttpHosts: toolCtx.allowedHttpHosts ?? [],
     });
   } catch (error) {
     res.json({
@@ -70,7 +138,15 @@ app.get('/api/health', async (_req, res) => {
         reachable: false,
         error: error instanceof Error ? error.message : 'Health check failed',
       },
-      tools: tools.map((t) => ({ name: t.name, description: t.description })),
+      tools: activeTools().map((t) => ({ name: t.name, description: t.description })),
+      skills: skillState.skills.map((s) => ({
+        skillName: s.skillName,
+        name: s.name,
+        description: s.description,
+        sourceId: s.sourceId,
+      })),
+      mcp: mcp.status,
+      allowedHttpHosts: toolCtx.allowedHttpHosts ?? [],
     });
   }
 });
@@ -99,8 +175,9 @@ app.post('/api/chat', async (req, res) => {
     for await (const event of runChatTurn({
       agent: config.agent,
       messages,
-      tools,
+      tools: activeTools(),
       toolCtx,
+      systemPrompt: skillState.systemPrompt || undefined,
       maxIterations: config.tools.maxIterations,
       signal: abort.signal,
     })) {
@@ -160,6 +237,32 @@ app.use((req, res, next) => {
   });
 });
 
-app.listen(config.port, () => {
-  console.log(`Starter chat listening on ${config.publicUrl}`);
+async function main(): Promise<void> {
+  await bootstrapSkills();
+  rebuildToolCtx();
+  await bootstrapMcp();
+
+  const server = app.listen(config.port, () => {
+    console.log(`Starter chat listening on ${config.publicUrl}`);
+    if (toolCtx.allowedHttpHosts && toolCtx.allowedHttpHosts.length > 0) {
+      console.log(`http_request allow-list: ${toolCtx.allowedHttpHosts.join(', ')}`);
+    }
+  });
+
+  let shuttingDown = false;
+  const shutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`Received ${signal}, shutting down...`);
+    server.close();
+    await mcp.shutdown();
+    process.exit(0);
+  };
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+}
+
+main().catch((error) => {
+  console.error('Server failed to start:', error);
+  process.exit(1);
 });

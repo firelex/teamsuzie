@@ -92,11 +92,11 @@ So you don't rebuild any of this:
 
 - **Auth** — multi-tenant sessions for browsers plus optional bearer tokens for app clients (orgs, users, agents) so your app is shippable to more than one customer on day one.
 - **LLM proxy** — one endpoint, many providers, per-agent usage tracking.
-- **Skill runtime** — installable capabilities you (or your assistant) drop into an agent's workspace. Composable; no monolithic tool registry.
+- **Skill runtime** — installable capabilities you (or your assistant) drop into an agent's workspace as markdown templates. Composable; no monolithic tool registry. `starter-chat` loads skills into the system prompt at startup and dispatches the HTTP calls they describe via the built-in `http_request` tool — so you can ship new agent capabilities without writing TypeScript.
 - **Approval queue** — a primitive for "agent proposes, human approves." Pluggable dispatchers (email, Slack, webhooks, your call).
 - **Scoped knowledge bases** — vector search (Milvus) + graph (Neo4j) with per-agent / per-org / global scopes.
 - **Admin control plane** — a full operator UI: agents, skills, approvals, text artifacts, bearer tokens, runtime config, and an audit-backed activity feed. Every mutation writes an `AuditLog` row and is covered by an integration test suite.
-- **Chat starters** — the three templates above, already wired for streaming and session handling. `starter-chat` ships a working tool-use loop with two demo tools (`vector_search`, `propose_action`) — drop new tool files in `src/tools/` to extend.
+- **Chat starters** — the three templates above, already wired for streaming and session handling. `starter-chat` ships a working tool-use loop with three built-in tools (`vector_search`, `propose_action`, `http_request`), a skills bridge that pulls in markdown-defined capabilities from a local directory or remote catalog, and an [MCP](https://modelcontextprotocol.io) client that connects to external MCP servers (stdio + Streamable HTTP) and exposes their tools too. Three extension paths: typed tool for in-process / strict-schema work, skill for vibe-coded HTTP services, MCP for tool servers you didn't write.
 
 You'll use some of these; you won't need to write any of them.
 

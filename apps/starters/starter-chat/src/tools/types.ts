@@ -4,6 +4,8 @@ export interface ToolContext {
   approvals: ApprovalQueue;
   vectorDbBaseUrl: string;
   vectorDbApiKey?: string;
+  /** Hostnames the http_request tool is permitted to call. */
+  allowedHttpHosts?: string[];
   fetchImpl?: typeof fetch;
 }
 
