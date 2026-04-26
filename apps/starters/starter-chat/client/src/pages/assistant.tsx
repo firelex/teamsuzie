@@ -199,11 +199,79 @@ function TypingDots() {
   );
 }
 
+/** snake_case → "Sentence case" — generic enough for any tool in the registry. */
+function prettyToolName(name: string): string {
+  const spaced = name.replace(/_/g, ' ').trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/**
+ * Pull a short, human-readable label out of a tool's arguments — the one thing
+ * a user would most want to see at a glance ("Wrote section: Background"
+ * rather than just "Wrote section"). Falls back to array-length summaries for
+ * tools that pass collections (e.g. set_outline with 5 headings).
+ */
+function summarizeArgs(args: unknown): string | null {
+  if (!args || typeof args !== 'object') return null;
+  const obj = args as Record<string, unknown>;
+  const labelKeys = ['title', 'heading', 'name', 'query', 'message', 'path', 'file_id', 'doc_id'];
+  for (const key of labelKeys) {
+    const v = obj[key];
+    if (typeof v === 'string' && v.trim().length > 0) {
+      const trimmed = v.trim();
+      return trimmed.length > 80 ? trimmed.slice(0, 77) + '…' : trimmed;
+    }
+  }
+  for (const [key, v] of Object.entries(obj)) {
+    if (Array.isArray(v) && v.length > 0) {
+      return `${v.length} ${key.replace(/_/g, ' ')}`;
+    }
+  }
+  return null;
+}
+
+function ToolIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-3"
+      aria-hidden="true"
+    >
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn(
+        'size-3.5 text-muted-foreground transition-transform',
+        open && 'rotate-180',
+      )}
+      aria-hidden="true"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 function ToolCallCard({ event }: { event: ToolEvent }) {
   const [open, setOpen] = useState(false);
   const statusLabel = {
     running: 'Running…',
-    done: 'Completed',
+    done: 'Done',
     error: 'Failed',
   }[event.status];
   const statusColor = {
@@ -211,19 +279,50 @@ function ToolCallCard({ event }: { event: ToolEvent }) {
     done: 'text-emerald-600 dark:text-emerald-500',
     error: 'text-destructive',
   }[event.status];
+  const summary = summarizeArgs(event.args);
+  const isError = event.status === 'error';
+  const isRunning = event.status === 'running';
 
   return (
-    <div className="my-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-[13px]">
+    <div
+      className={cn(
+        'my-1.5 rounded-lg border bg-card px-3 py-2 text-[13px] transition-colors',
+        isError ? 'border-destructive/30' : 'border-border',
+      )}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-3 text-left"
       >
-        <span className="flex items-center gap-2 font-mono text-foreground">
-          <span aria-hidden="true">⚙︎</span>
-          <span className="font-medium">{event.name}</span>
+        <span className="flex min-w-0 items-center gap-2.5">
+          <span
+            className={cn(
+              'inline-flex size-5 shrink-0 items-center justify-center rounded-md border',
+              isError
+                ? 'border-destructive/40 text-destructive'
+                : 'border-border text-muted-foreground',
+              isRunning && 'animate-pulse',
+            )}
+            aria-hidden="true"
+          >
+            <ToolIcon />
+          </span>
+          <span className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate font-medium text-foreground">
+              {prettyToolName(event.name)}
+            </span>
+            {summary && (
+              <span className="truncate text-[11px] text-muted-foreground">
+                {summary}
+              </span>
+            )}
+          </span>
         </span>
-        <span className={cn('text-xs font-medium', statusColor)}>{statusLabel}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className={cn('text-xs font-medium', statusColor)}>{statusLabel}</span>
+          <ChevronIcon open={open} />
+        </span>
       </button>
       {open && (
         <div className="mt-2 space-y-2 border-t border-border pt-2 text-xs">
