@@ -14,6 +14,7 @@
   "dependencies": {
     "@teamsuzie/agent-loop": "workspace:*",
     "@teamsuzie/approvals": "workspace:*",
+    "@teamsuzie/markdown-document": "workspace:*",
     "cors": "^2.8.5",
     "dotenv": "^16.6.0",
     "express": "^5.1.0",

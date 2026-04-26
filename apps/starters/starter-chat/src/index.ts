@@ -16,18 +16,21 @@ import {
   type SkillLoadResult,
   type ToolContext,
 } from '@teamsuzie/agent-loop';
+import { InMemoryDocumentStore } from '@teamsuzie/markdown-document';
 import { config } from './config.js';
 import {
   buildAttachmentContext,
   createFilesRouter,
   InMemoryFileStore,
 } from './files.js';
+import { buildDocumentTools } from './document-tools.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistDir = path.resolve(__dirname, '../client/dist');
 
 const approvals = new ApprovalQueue({ store: new InMemoryApprovalStore() });
 const fileStore = new InMemoryFileStore();
+const docStore = new InMemoryDocumentStore();
 
 let skillState: SkillLoadResult = { skills: [], systemPrompt: '', derivedHosts: [] };
 let mcp: McpManager = { tools: [], status: [], shutdown: async () => {} };
@@ -201,11 +204,22 @@ app.post('/api/chat', async (req, res) => {
 
   const messages: ChatMessage[] = [...history, { role: 'user', content: userContent }];
 
+  // Per-turn tools include the session-scoped document tools (lazy convert,
+  // navigate, draft, export). When markitdown-agent isn't configured, only the
+  // navigation/drafting subset shows up.
+  const docTools = buildDocumentTools({
+    sessionId,
+    fileStore,
+    docStore,
+    markitdownBaseUrl: config.markitdown.baseUrl,
+  });
+  const turnTools = [...activeTools(), ...docTools];
+
   try {
     for await (const event of runChatTurn({
       agent: config.agent,
       messages,
-      tools: activeTools(),
+      tools: turnTools,
       toolCtx,
       systemPrompt: skillState.systemPrompt || undefined,
       maxIterations: config.tools.maxIterations,
@@ -251,7 +265,10 @@ app.post('/api/approvals/:id/review', async (req, res) => {
 
 app.post('/api/session/reset', (req, res) => {
   const sessionId = String(req.body?.sessionId || '').trim();
-  if (sessionId) fileStore.clearSession(sessionId);
+  if (sessionId) {
+    fileStore.clearSession(sessionId);
+    docStore.clearSession(sessionId);
+  }
   res.json({ ok: true });
 });
 

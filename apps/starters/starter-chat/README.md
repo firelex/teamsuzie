@@ -7,6 +7,7 @@ Minimal full-stack chatbot starter for OpenAI-compatible backends, with a built-
 - Express backend that proxies to a configured OpenAI-compatible chat backend
 - React client with streaming chat (SSE) and a **multi-page shell** built on `@teamsuzie/ui` (`AppShell`, `Sidebar`, `PageHeader`) and `react-router` — Assistant / Library / History pages, ready to extend
 - **File attachments** — paperclip in the composer accepts any file (configurable cap; default 25MB). Text-like files are read as UTF-8 and prepended to the user message; binaries are surfaced as metadata only ("`report.docx` — DOCX, 14KB; no extraction tool wired"). Per-session, in-memory; resets on restart.
+- **Document navigation + drafting tools** (when `markitdown-agent` is wired) — the agent gets `convert_to_markdown(file_id)` to turn any uploaded binary into a navigable markdown document, plus the read-only set (`list_documents`, `get_outline`, `read_section`, `search_document`) for Q&A and the read-write set (`create_document`, `set_outline`, `write_section`, `append_section`, `revise_section`, `export_to_docx`) for drafting. Same `MarkdownDocument` primitive backs both flows — see [`@teamsuzie/markdown-document`](../../../packages/markdown-document/README.md).
 - **Tool-use loop**: when the model emits `tool_calls`, the backend dispatches them, feeds results back, and re-calls the model — no second runtime needed
 - **Three built-in tools** wired to Team Suzie pillars:
   - `vector_search` — calls `vector-db` (`:3006`)
@@ -159,6 +160,21 @@ export const myTool: ToolDefinition<{ url: string }> = {
 ```
 
 Register dependencies your tool needs (queues, clients) in `ToolContext` and pass them in from `src/index.ts` at startup.
+
+### Working with documents
+
+When `markitdown-agent` is running and `STARTER_CHAT_MARKITDOWN_AGENT_BASE_URL` is set, the agent has document tools available. Two recommended patterns; pin them in your app's system prompt:
+
+**Q&A on an uploaded document:**
+
+> When the user attaches a binary and asks about its contents, call `convert_to_markdown(file_id)` to produce a `doc_id`, then use `get_outline` and `read_section` (or `search_document` for keyword queries) to answer with citations. Don't read the whole document at once — read sections.
+
+**Drafting a document:**
+
+> 1. Call `create_document(title)` to start.
+> 2. Propose a TOC and confirm with the user before filling — `set_outline([{level,text}, ...])`.
+> 3. Fill sections one at a time with `write_section`. Before writing each section, call `read_section` on neighboring headings to maintain coherence with what's already drafted.
+> 4. When the user is satisfied, call `export_to_docx(doc_id, filename)` and share the `download_url`.
 
 ### Approvals
 

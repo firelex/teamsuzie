@@ -54,4 +54,12 @@ export const config = {
     /** Per-file size cap on uploads. Default 25MB. */
     maxUploadBytes: parseInt(process.env.STARTER_CHAT_MAX_UPLOAD_BYTES || `${25 * 1024 * 1024}`, 10),
   },
+  /**
+   * markitdown-agent (sibling Python service) provides DOCX/PDF/etc → markdown
+   * conversion and markdown → DOCX export. When set, the agent gets
+   * `convert_to_markdown` and `export_to_docx` tools.
+   */
+  markitdown: {
+    baseUrl: (process.env.STARTER_CHAT_MARKITDOWN_AGENT_BASE_URL || '').replace(/\/$/, ''),
+  },
 };
