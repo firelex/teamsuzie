@@ -437,6 +437,7 @@ export function AssistantPage({ agentName }: AssistantPageProps) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let streamFinished = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -518,7 +519,17 @@ export function AssistantPage({ agentName }: AssistantPageProps) {
             );
           } else if (payload.type === 'error') {
             setError(payload.message);
+          } else if (payload.type === 'done') {
+            // The server sends 'done' as the last SSE event before res.end().
+            // Some proxies (Vite dev, etc.) buffer the connection-close, so
+            // relying on reader.read() returning done:true is unreliable.
+            // Break out explicitly so the textarea re-enables immediately.
+            streamFinished = true;
           }
+        }
+        if (streamFinished) {
+          await reader.cancel().catch(() => undefined);
+          break;
         }
       }
     } catch (err) {
@@ -591,7 +602,7 @@ export function AssistantPage({ agentName }: AssistantPageProps) {
               event.target.value = '';
             }}
           />
-          <div className="rounded-2xl border border-border bg-card shadow-sm transition-all focus-within:border-foreground/25 focus-within:shadow-md">
+          <div className="rounded-2xl border border-border bg-card shadow-sm transition-shadow focus-within:shadow-md">
             {attachments.length > 0 && (
               <div className="flex flex-wrap gap-1.5 border-b border-border px-3 pb-2 pt-2.5">
                 {attachments.map((att) => (
