@@ -523,12 +523,16 @@ export function AssistantPage({ agentName }: AssistantPageProps) {
             // The server sends 'done' as the last SSE event before res.end().
             // Some proxies (Vite dev, etc.) buffer the connection-close, so
             // relying on reader.read() returning done:true is unreliable.
-            // Break out explicitly so the textarea re-enables immediately.
+            // Re-enable the composer eagerly here, then break out of the read
+            // loop. Don't await reader.cancel() — that can also hang on a
+            // buffered proxy.
+            console.debug('[chat] received done event — re-enabling composer');
+            setStatus('idle');
             streamFinished = true;
           }
         }
         if (streamFinished) {
-          await reader.cancel().catch(() => undefined);
+          reader.cancel().catch(() => undefined);
           break;
         }
       }
