@@ -12,4 +12,11 @@ export const config = {
     apiKey: process.env.STARTER_CHAT_AGENT_API_KEY || undefined,
     model: process.env.STARTER_CHAT_MODEL || 'openai/gpt-4.1-mini',
   },
+  vectorDb: {
+    baseUrl: (process.env.STARTER_CHAT_VECTOR_DB_BASE_URL || 'http://localhost:3006').replace(/\/$/, ''),
+    apiKey: process.env.STARTER_CHAT_VECTOR_DB_API_KEY || undefined,
+  },
+  tools: {
+    maxIterations: parseInt(process.env.STARTER_CHAT_TOOL_MAX_ITERATIONS || '6', 10),
+  },
 };

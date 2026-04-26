@@ -3,11 +3,22 @@ import cors from 'cors';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ApprovalQueue, InMemoryApprovalStore } from '@teamsuzie/approvals';
 import { config } from './config.js';
-import { readChatTextStream, streamChatCompletion, type ChatMessage } from './chat-provider.js';
+import { runChatTurn, type ChatMessage } from './chat-provider.js';
+import { tools } from './tools/index.js';
+import type { ToolContext } from './tools/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistDir = path.resolve(__dirname, '../client/dist');
+
+const approvals = new ApprovalQueue({ store: new InMemoryApprovalStore() });
+
+const toolCtx: ToolContext = {
+  approvals,
+  vectorDbBaseUrl: config.vectorDb.baseUrl,
+  vectorDbApiKey: config.vectorDb.apiKey,
+};
 
 const app = express();
 app.use(cors({ origin: config.allowedOrigin, credentials: true }));
@@ -32,7 +43,6 @@ app.get('/api/health', async (_req, res) => {
         const probe = await fetch(config.agent.baseUrl, {
           signal: AbortSignal.timeout(5_000),
         });
-        // Even a 404/405 from the runtime root means the endpoint is reachable.
         reachable = probe.status > 0;
         runtimeError = '';
       } catch (error) {
@@ -48,6 +58,7 @@ app.get('/api/health', async (_req, res) => {
         description: config.agent.description,
         reachable,
       },
+      tools: tools.map((t) => ({ name: t.name, description: t.description })),
     });
   } catch (error) {
     res.json({
@@ -59,6 +70,7 @@ app.get('/api/health', async (_req, res) => {
         reachable: false,
         error: error instanceof Error ? error.message : 'Health check failed',
       },
+      tools: tools.map((t) => ({ name: t.name, description: t.description })),
     });
   }
 });
@@ -77,36 +89,56 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
+  const send = (event: object) => res.write(`data: ${JSON.stringify(event)}\n\n`);
+  const abort = new AbortController();
+  req.on('close', () => abort.abort());
+
   const messages: ChatMessage[] = [...history, { role: 'user', content: message }];
-  let emittedText = false;
 
   try {
-    const reader = await streamChatCompletion(config.agent, messages);
-    for await (const chunk of readChatTextStream(reader)) {
-      emittedText = true;
-      res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
+    for await (const event of runChatTurn({
+      agent: config.agent,
+      messages,
+      tools,
+      toolCtx,
+      maxIterations: config.tools.maxIterations,
+      signal: abort.signal,
+    })) {
+      send(event);
+      if (event.type === 'done' || event.type === 'error') break;
     }
-
-    if (!emittedText) {
-      res.write(
-        `data: ${JSON.stringify({
-          type: 'error',
-          message:
-            'The configured backend responded without any text. Check the backend logs and model/provider connectivity.',
-        })}\n\n`,
-      );
-    }
-
-    res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
   } catch (error) {
-    res.write(
-      `data: ${JSON.stringify({
-        type: 'error',
-        message: error instanceof Error ? error.message : 'Chat request failed',
-      })}\n\n`,
-    );
+    send({ type: 'error', message: error instanceof Error ? error.message : 'Chat request failed' });
   } finally {
     res.end();
+  }
+});
+
+app.get('/api/approvals', async (req, res) => {
+  const status = typeof req.query.status === 'string' ? req.query.status : 'pending';
+  const items = await approvals.list({
+    status: status === 'all' ? undefined : (status as 'pending' | 'approved' | 'rejected' | 'dispatched' | 'failed'),
+  });
+  res.json({ items });
+});
+
+app.post('/api/approvals/:id/review', async (req, res) => {
+  const id = req.params.id;
+  const verdict = req.body?.verdict === 'approve' ? 'approve' : 'reject';
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason : undefined;
+
+  try {
+    const reviewed = await approvals.review(id, {
+      reviewer_id: 'human',
+      verdict,
+      reason,
+    });
+    res.json({ ok: true, item: reviewed });
+  } catch (err) {
+    res.status(400).json({
+      ok: false,
+      error: err instanceof Error ? err.message : 'Review failed',
+    });
   }
 });
 

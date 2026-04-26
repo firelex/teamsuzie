@@ -13,10 +13,20 @@ interface HealthResponse {
   };
 }
 
+interface ToolEvent {
+  id: string;
+  name: string;
+  args?: unknown;
+  result?: unknown;
+  error?: string;
+  status: 'running' | 'done' | 'error';
+}
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  toolEvents?: ToolEvent[];
 }
 
 interface PromptCard {
@@ -263,6 +273,68 @@ function Sidebar({
   );
 }
 
+function ToolCallCard({ event }: { event: ToolEvent }) {
+  const [open, setOpen] = useState(false);
+  const statusLabel = {
+    running: 'Running…',
+    done: 'Completed',
+    error: 'Failed',
+  }[event.status];
+  const statusColor = {
+    running: 'text-muted-foreground',
+    done: 'text-emerald-600 dark:text-emerald-500',
+    error: 'text-destructive',
+  }[event.status];
+
+  return (
+    <div className="my-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-[13px]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 text-left"
+      >
+        <span className="flex items-center gap-2 font-mono text-foreground">
+          <span aria-hidden="true">⚙︎</span>
+          <span className="font-medium">{event.name}</span>
+        </span>
+        <span className={cn('text-xs font-medium', statusColor)}>{statusLabel}</span>
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2 border-t border-border pt-2 text-xs">
+          {event.args !== undefined && (
+            <div>
+              <div className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                Arguments
+              </div>
+              <pre className="overflow-x-auto rounded bg-background p-2 font-mono text-[11px]">
+                {JSON.stringify(event.args, null, 2)}
+              </pre>
+            </div>
+          )}
+          {event.result !== undefined && (
+            <div>
+              <div className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                Result
+              </div>
+              <pre className="overflow-x-auto rounded bg-background p-2 font-mono text-[11px]">
+                {JSON.stringify(event.result, null, 2)}
+              </pre>
+            </div>
+          )}
+          {event.error && (
+            <div className="text-destructive">
+              <div className="mb-1 text-[11px] uppercase tracking-wider">Error</div>
+              <pre className="overflow-x-auto rounded bg-background p-2 font-mono text-[11px]">
+                {event.error}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MessageItem({
   message,
   agentName,
@@ -273,7 +345,9 @@ function MessageItem({
   isStreaming: boolean;
 }) {
   const isUser = message.role === 'user';
-  const showTyping = !isUser && isStreaming && message.content.length === 0;
+  const hasToolEvents = !!message.toolEvents && message.toolEvents.length > 0;
+  const showTyping =
+    !isUser && isStreaming && message.content.length === 0 && !hasToolEvents;
 
   if (isUser) {
     return (
@@ -290,12 +364,19 @@ function MessageItem({
       <div className="text-[11px] font-medium text-muted-foreground">
         {agentName}
       </div>
+      {hasToolEvents && (
+        <div>
+          {message.toolEvents!.map((event) => (
+            <ToolCallCard key={event.id} event={event} />
+          ))}
+        </div>
+      )}
       {showTyping ? (
         <div className="text-[15px] leading-relaxed">
           <TypingDots />
         </div>
       ) : (
-        <MarkdownMessage content={message.content} />
+        message.content.length > 0 && <MarkdownMessage content={message.content} />
       )}
     </div>
   );
@@ -439,6 +520,9 @@ export default function App() {
 
           const payload = JSON.parse(line.slice(6)) as
             | { type: 'chunk'; text: string }
+            | { type: 'tool_call'; id: string; name: string; args: unknown }
+            | { type: 'tool_result'; id: string; name: string; result: unknown }
+            | { type: 'tool_error'; id: string; name: string; error: string }
             | { type: 'done' }
             | { type: 'error'; message: string };
 
@@ -449,6 +533,49 @@ export default function App() {
                   ? { ...message, content: message.content + payload.text }
                   : message,
               ),
+            );
+          } else if (payload.type === 'tool_call') {
+            setMessages((current) =>
+              current.map((message) => {
+                if (message.id !== assistantId) return message;
+                const events = message.toolEvents ?? [];
+                return {
+                  ...message,
+                  toolEvents: [
+                    ...events,
+                    {
+                      id: payload.id,
+                      name: payload.name,
+                      args: payload.args,
+                      status: 'running' as const,
+                    },
+                  ],
+                };
+              }),
+            );
+          } else if (payload.type === 'tool_result') {
+            setMessages((current) =>
+              current.map((message) => {
+                if (message.id !== assistantId) return message;
+                const events = (message.toolEvents ?? []).map((event) =>
+                  event.id === payload.id
+                    ? { ...event, result: payload.result, status: 'done' as const }
+                    : event,
+                );
+                return { ...message, toolEvents: events };
+              }),
+            );
+          } else if (payload.type === 'tool_error') {
+            setMessages((current) =>
+              current.map((message) => {
+                if (message.id !== assistantId) return message;
+                const events = (message.toolEvents ?? []).map((event) =>
+                  event.id === payload.id
+                    ? { ...event, error: payload.error, status: 'error' as const }
+                    : event,
+                );
+                return { ...message, toolEvents: events };
+              }),
             );
           } else if (payload.type === 'error') {
             setError(payload.message);

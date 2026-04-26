@@ -61,6 +61,37 @@ importers:
         specifier: ^4.0.18
         version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@22.19.17)(vite@8.0.8(@types/node@22.19.17)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0))
 
+  apps/examples/skill-catalog-host:
+    dependencies:
+      '@teamsuzie/skills':
+        specifier: workspace:*
+        version: link:../../../packages/skills
+      cors:
+        specifier: ^2.8.5
+        version: 2.8.6
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
+      helmet:
+        specifier: ^8.1.0
+        version: 8.1.0
+    devDependencies:
+      '@types/cors':
+        specifier: ^2.8.17
+        version: 2.8.19
+      '@types/express':
+        specifier: ^5.0.3
+        version: 5.0.6
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.19.17
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.8.3
+
   apps/platform/admin:
     dependencies:
       '@teamsuzie/approvals':
@@ -375,6 +406,9 @@ importers:
 
   apps/starters/starter-chat:
     dependencies:
+      '@teamsuzie/approvals':
+        specifier: workspace:*
+        version: link:../../../packages/approvals
       cors:
         specifier: ^2.8.5
         version: 2.8.6
@@ -400,6 +434,9 @@ importers:
       typescript:
         specifier: ^5.7.3
         version: 5.8.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.4(@opentelemetry/api@1.9.1)(@types/node@22.19.17)(vite@8.0.8(@types/node@22.19.17)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0))
 
   apps/starters/starter-chat-openclaw:
     dependencies:
