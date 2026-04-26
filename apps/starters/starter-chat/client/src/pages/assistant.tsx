@@ -9,9 +9,12 @@ import {
   ToolUseStatus,
   cn,
   humanSize,
+  useSelectedModel,
   type ArtifactSnapshot,
   type ToolEvent,
 } from '@teamsuzie/ui';
+
+const SELECTED_MODEL_KEY = 'starter-chat:selected-model';
 
 interface Message {
   id: string;
@@ -187,6 +190,9 @@ export function AssistantPage({ agentName }: AssistantPageProps) {
   const [error, setError] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  // Reads the model selection persisted by the Settings page (if any).
+  // Server falls back to its configured default when undefined.
+  const [selectedModel] = useSelectedModel(SELECTED_MODEL_KEY);
   const [activeArtifact, setActiveArtifact] = useState<ArtifactSnapshot | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -277,6 +283,7 @@ export function AssistantPage({ agentName }: AssistantPageProps) {
           message: text,
           history: nextHistory.slice(0, -1),
           attachmentIds: sentAttachmentIds,
+          model: selectedModel,
         }),
       });
 

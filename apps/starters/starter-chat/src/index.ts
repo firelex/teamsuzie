@@ -136,6 +136,7 @@ app.get('/api/health', async (_req, res) => {
       agent: {
         name: config.agent.name,
         description: config.agent.description,
+        model: config.agent.model,
         reachable,
       },
       tools: activeTools().map((t) => ({ name: t.name, description: t.description })),
@@ -155,6 +156,7 @@ app.get('/api/health', async (_req, res) => {
       agent: {
         name: config.agent.name,
         description: config.agent.description,
+        model: config.agent.model,
         reachable: false,
         error: error instanceof Error ? error.message : 'Health check failed',
       },
@@ -178,6 +180,12 @@ app.post('/api/chat', async (req, res) => {
   const attachmentIds = Array.isArray(req.body?.attachmentIds)
     ? (req.body.attachmentIds as unknown[]).map(String).filter(Boolean)
     : [];
+  // Per-request model override — set by the Settings page's model picker.
+  // Falls back to the server's configured default.
+  const requestedModel = String(req.body?.model || '').trim();
+  const agent = requestedModel
+    ? { ...config.agent, model: requestedModel }
+    : config.agent;
 
   if (!message) {
     res.status(400).json({ error: 'message is required' });
@@ -223,7 +231,7 @@ app.post('/api/chat', async (req, res) => {
 
   try {
     for await (const event of runChatTurn({
-      agent: config.agent,
+      agent,
       messages,
       tools: turnTools,
       toolCtx,

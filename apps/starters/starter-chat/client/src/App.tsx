@@ -8,17 +8,19 @@ import {
   SidebarHeader,
   SidebarNav,
   SidebarNavItem,
-  cn,
+  StatusDot,
 } from '@teamsuzie/ui';
 import { AssistantPage } from './pages/assistant.js';
 import { HistoryPage } from './pages/history.js';
 import { LibraryPage } from './pages/library.js';
+import { SettingsPage } from './pages/settings.js';
 
 interface HealthResponse {
   title: string;
   agent: {
     name: string;
     description?: string;
+    model?: string;
     reachable: boolean;
     error?: string;
   };
@@ -36,34 +38,6 @@ function Wordmark({ title }: { title: string }) {
       <div className="size-6 rounded-md bg-foreground" aria-hidden="true" />
       <span className="text-sm font-semibold tracking-tight">{title}</span>
     </div>
-  );
-}
-
-function StatusDot({
-  name,
-  state,
-}: {
-  name: string;
-  state: 'online' | 'offline' | 'pending';
-}) {
-  const dot = {
-    online: 'bg-emerald-500',
-    offline: 'bg-destructive',
-    pending: 'bg-muted-foreground/50',
-  }[state];
-  const title = {
-    online: 'Runtime reachable',
-    offline: 'Runtime offline',
-    pending: 'Checking runtime',
-  }[state];
-  return (
-    <span
-      className="inline-flex items-center gap-2 text-xs text-muted-foreground"
-      title={title}
-    >
-      <span className={cn('size-1.5 rounded-full', dot)} aria-hidden="true" />
-      <span className="font-medium text-foreground/80">{name}</span>
-    </span>
   );
 }
 
@@ -104,7 +78,12 @@ export default function App() {
           ))}
         </SidebarNav>
         <SidebarFooter>
-          <StatusDot name={agentName} state={statusState} />
+          <SidebarNavItem asChild>
+            <NavLink to="/settings">Settings</NavLink>
+          </SidebarNavItem>
+          <div className="mt-2">
+            <StatusDot name={agentName} state={statusState} />
+          </div>
         </SidebarFooter>
       </Sidebar>
       <AppShellMain>
@@ -112,6 +91,10 @@ export default function App() {
           <Route path="/" element={<AssistantPage agentName={agentName} />} />
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route
+            path="/settings"
+            element={<SettingsPage defaultModel={health?.agent?.model} />}
+          />
         </Routes>
       </AppShellMain>
     </AppShell>
