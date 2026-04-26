@@ -2,7 +2,8 @@
 
 Team Suzie is designed to be extended, not forked. This doc lists the seams you can hook into without modifying core packages.
 
-> **v0.1 note:** some of these extension points are documented ahead of the code. Check the corresponding package's README for implementation status.
+Some extension points are richer than others. Check the corresponding package
+README for implementation status before building against an interface.
 
 ## 1. Skills
 
@@ -14,7 +15,31 @@ A skill is a directory with a `SKILL.md` (the instructions the agent reads when 
 
 Skills do not execute code at install time; they only inject files. If your skill needs network access or side effects, those happen through the agent's tool surface at runtime, not through the skill installer.
 
-**Out of scope:** pricing, entitlement checks, paid access. Those are hosted-product concerns; the OSS runtime treats all installable skills as equally available.
+Skill discovery can come from more than one source. The core package exposes a
+`SkillSource` interface for local folders, community catalogs, or hosted
+catalogs. The built-in `FilesystemSkillSource` wraps the normal
+`packages/skills/templates` directory and marks those skills as free. The
+built-in `HttpSkillSource` consumes an external catalog with:
+
+```text
+GET /skills
+GET /skills/:slug
+```
+
+`apps/examples/skill-catalog-host` is a minimal implementation of that external
+catalog contract. HTTP catalogs return raw template contents; the OSS
+`HttpSkillSource` renders placeholders locally so agent context does not have to
+be sent to the remote host.
+
+Apps can also provide a `SkillInstallPolicy` before applying a source-backed
+skill. The OSS default policy allows every install. Hosted Team Suzie can plug
+in an entitlement service that denies paid skills, returns a checkout URL, or
+serves only the bundles an org is allowed to install.
+
+**Out of scope:** pricing, billing, paid-access enforcement, and hosted catalog
+business rules. Those are hosted-product concerns. The OSS runtime knows how to
+ask a policy for an install decision; it does not know why a commercial policy
+allowed or denied access.
 
 ## 2. Approval dispatchers
 

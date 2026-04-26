@@ -3,7 +3,14 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { SkillRegistry, FilesystemSkillTarget, interpolate } from '../index.js';
+import {
+    SkillRegistry,
+    FilesystemSkillSource,
+    FilesystemSkillTarget,
+    HttpSkillSource,
+    applySkillFromSource,
+    interpolate,
+} from '../index.js';
 
 let tmpDir: string;
 let skillsDir: string;
@@ -112,5 +119,144 @@ describe('FilesystemSkillTarget', () => {
         await expect(
             target.apply('agent-1', [{ file_path: '../escape.md', content: 'x', content_type: 'markdown' }])
         ).rejects.toThrow(/outside target root/);
+    });
+});
+
+describe('FilesystemSkillSource', () => {
+    it('lists local skills through the generic source contract', async () => {
+        writeSkill('hello', '---\nname: Hello\ndescription: Friendly\n---\nHi');
+        const source = new FilesystemSkillSource({ skillsDir, sourceId: 'core' });
+
+        await expect(source.listSkills()).resolves.toEqual([
+            {
+                skillName: 'hello',
+                name: 'Hello',
+                description: 'Friendly',
+                sourceId: 'core',
+                access: 'free',
+            },
+        ]);
+    });
+
+    it('applies a source-backed skill through an install policy', async () => {
+        writeSkill('hello', '---\nname: Hello\ndescription: Friendly\n---\nHi {{AGENT_NAME}}');
+        const source = new FilesystemSkillSource({ skillsDir, sourceId: 'core' });
+        const target = new FilesystemSkillTarget({ rootDir: path.join(tmpDir, 'out') });
+        const seen: string[] = [];
+
+        const decision = await applySkillFromSource({
+            source,
+            target,
+            subjectId: 'agent-1',
+            ref: { sourceId: 'core', skillName: 'hello' },
+            renderContext: { AGENT_NAME: 'Suzie' },
+            policy: {
+                async canInstall(request) {
+                    seen.push(`${request.ref.sourceId}:${request.ref.skillName}`);
+                    return { allowed: true };
+                },
+            },
+        });
+
+        expect(decision).toEqual({ allowed: true });
+        expect(seen).toEqual(['core:hello']);
+        const written = await fsp.readFile(path.join(tmpDir, 'out', 'agent-1', 'skills/hello/SKILL.md'), 'utf-8');
+        expect(written).toContain('Hi Suzie');
+    });
+
+    it('does not fetch or write when install policy denies access', async () => {
+        writeSkill('hello', '---\nname: Hello\ndescription: Friendly\n---\nHi');
+        const source = new FilesystemSkillSource({ skillsDir, sourceId: 'core' });
+        const target = new FilesystemSkillTarget({ rootDir: path.join(tmpDir, 'out') });
+
+        const decision = await applySkillFromSource({
+            source,
+            target,
+            subjectId: 'agent-1',
+            ref: { sourceId: 'core', skillName: 'hello' },
+            renderContext: {},
+            policy: {
+                async canInstall() {
+                    return { allowed: false, reason: 'Payment required', checkoutUrl: 'https://example.test/checkout' };
+                },
+            },
+        });
+
+        expect(decision).toEqual({
+            allowed: false,
+            reason: 'Payment required',
+            checkoutUrl: 'https://example.test/checkout',
+        });
+        await expect(fsp.stat(path.join(tmpDir, 'out'))).rejects.toThrow();
+    });
+});
+
+describe('HttpSkillSource', () => {
+    it('lists skills from a remote catalog', async () => {
+        const requests: string[] = [];
+        const source = new HttpSkillSource({
+            sourceId: 'remote',
+            baseUrl: 'https://catalog.example.test/',
+            fetchImpl: async (input) => {
+                requests.push(String(input));
+                return Response.json({
+                    items: [
+                        {
+                            sourceId: 'remote',
+                            skillName: 'research-helper',
+                            name: 'Research Helper',
+                            description: 'Remote example',
+                            access: 'paid',
+                            version: '1.0.0',
+                            publisher: 'Example Co',
+                        },
+                    ],
+                });
+            },
+        });
+
+        await expect(source.listSkills()).resolves.toEqual([
+            {
+                sourceId: 'remote',
+                skillName: 'research-helper',
+                name: 'Research Helper',
+                description: 'Remote example',
+                access: 'paid',
+                version: '1.0.0',
+                publisher: 'Example Co',
+            },
+        ]);
+        expect(requests).toEqual(['https://catalog.example.test/skills']);
+    });
+
+    it('fetches a rendered skill bundle from a remote catalog', async () => {
+        const requests: string[] = [];
+        const source = new HttpSkillSource({
+            sourceId: 'remote',
+            baseUrl: 'https://catalog.example.test',
+            fetchImpl: async (input) => {
+                requests.push(String(input));
+                return Response.json({
+                    bundle: {
+                        ref: { sourceId: 'remote', skillName: 'research-helper', version: '1.0.0' },
+                        files: [
+                            {
+                                file_path: 'skills/research-helper/SKILL.md',
+                                content: 'Hello {{AGENT_NAME}}',
+                                content_type: 'markdown',
+                            },
+                        ],
+                    },
+                });
+            },
+        });
+
+        const bundle = await source.getSkillBundle(
+            { sourceId: 'remote', skillName: 'research-helper', version: '1.0.0' },
+            { AGENT_NAME: 'Suzie' },
+        );
+
+        expect(bundle?.files[0]?.content).toBe('Hello Suzie');
+        expect(requests).toEqual(['https://catalog.example.test/skills/research-helper?version=1.0.0']);
     });
 });

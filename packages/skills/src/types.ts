@@ -14,12 +14,42 @@ export interface SkillInfo {
     description: string;
 }
 
+export type SkillAccess = 'free' | 'paid' | 'licensed' | 'unknown';
+
+export interface SkillSourceContext {
+    orgId?: string;
+    userId?: string;
+    agentId?: string;
+    authToken?: string;
+}
+
+export interface SkillRef {
+    sourceId: string;
+    skillName: string;
+    version?: string;
+}
+
+export interface SkillListing extends SkillInfo {
+    /** Source that produced this listing (local filesystem, hosted catalog, etc.). */
+    sourceId: string;
+    version?: string;
+    publisher?: string;
+    access: SkillAccess;
+}
+
 export interface SkillFile {
     /** Path relative to the target root (e.g. "skills/hello-world/SKILL.md") */
     file_path: string;
     /** Rendered contents (placeholders substituted) */
     content: string;
     content_type: 'markdown' | 'json' | 'yaml' | 'text';
+}
+
+export interface SkillBundle {
+    ref: SkillRef;
+    files: SkillFile[];
+    checksum?: string;
+    signature?: string;
 }
 
 /**
@@ -42,4 +72,31 @@ export interface SkillTarget {
     apply(subjectId: string, files: SkillFile[]): Promise<void>;
     /** Remove previously applied files for a given agent / subject. */
     remove?(subjectId: string, filePaths: string[]): Promise<void>;
+}
+
+export interface SkillSource {
+    /** Stable source id, e.g. "local", "community", or "teamsuzie-hosted". */
+    id: string;
+    listSkills(context?: SkillSourceContext): Promise<SkillListing[]>;
+    getSkillBundle(
+        ref: SkillRef,
+        renderContext: SkillRenderContext,
+        context?: SkillSourceContext,
+    ): Promise<SkillBundle | null>;
+}
+
+export interface SkillInstallRequest {
+    subjectId: string;
+    ref: SkillRef;
+    context?: SkillSourceContext;
+}
+
+export interface SkillInstallDecision {
+    allowed: boolean;
+    reason?: string;
+    checkoutUrl?: string;
+}
+
+export interface SkillInstallPolicy {
+    canInstall(request: SkillInstallRequest): Promise<SkillInstallDecision>;
 }

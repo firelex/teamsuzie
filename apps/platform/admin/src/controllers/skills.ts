@@ -21,7 +21,7 @@ export class SkillsController {
 
   list = async (req: Request, res: Response): Promise<void> => {
     try {
-      const items = this.skills.list();
+      const items = await this.skills.list();
       this.logOk(req, 'list', `count=${items.length}`);
       res.json({ items });
     } catch (err) {

@@ -17,9 +17,13 @@ import {
 } from '@teamsuzie/ui';
 
 export interface SkillTemplateRow {
+  source_id: string;
   slug: string;
   name: string;
   description: string;
+  access: 'free' | 'paid' | 'licensed' | 'unknown';
+  version?: string;
+  publisher?: string;
   required_context: string[];
 }
 
@@ -86,7 +90,15 @@ export function SkillsPage() {
               {items.map((skill) => (
                 <Card key={skill.slug} className="flex flex-col">
                   <CardHeader>
-                    <CardDescription className="font-mono text-xs">{skill.slug}</CardDescription>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <CardDescription className="font-mono text-xs">{skill.slug}</CardDescription>
+                      <Badge variant="outline" className="font-mono text-[10px]">
+                        {skill.source_id}
+                      </Badge>
+                      <Badge variant={skill.access === 'paid' ? 'secondary' : 'outline'} className="text-[10px]">
+                        {skill.access}
+                      </Badge>
+                    </div>
                     <CardTitle className="text-base">{skill.name}</CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-1 flex-col gap-3">

@@ -29,6 +29,29 @@ registry.renderSkill(skillName, context);    // interpolated SkillFile, or null
 registry.applySkills(subjectId, context, target, skillNames?);
 ```
 
+For apps that merge local skills with community or hosted catalogs, use the
+source-level API:
+
+```typescript
+const source = new FilesystemSkillSource({ skillsDir: '/path/to/skills' });
+const remote = new HttpSkillSource({
+  sourceId: 'external-sample',
+  baseUrl: 'http://localhost:3021',
+});
+
+await source.listSkills(); // SkillListing[]
+await remote.listSkills(); // SkillListing[] from GET /skills
+
+await applySkillFromSource({
+  source: remote,
+  ref: { sourceId: 'external-sample', skillName: 'research-helper' },
+  subjectId: 'agent-1',
+  renderContext,
+  target,
+  policy, // optional; defaults to allow-all in OSS
+});
+```
+
 The runtime is **headless** — it does not know where skills end up. That's what the
 `SkillTarget` interface is for:
 
@@ -51,12 +74,21 @@ Two implementations:
   instructions the agent should read. Reference caller-provided placeholders with
   `{{KEY_NAME}}` syntax.
 - **Custom target:** implement `SkillTarget` and pass it to `applySkills()`.
-- **Loading skills from multiple sources:** instantiate multiple `SkillRegistry`s with
-  different `skillsDir` roots and merge their output in your application.
+- **Loading skills from multiple sources:** implement `SkillSource` for each catalog
+  and merge their `SkillListing[]` output in your application.
+- **HTTP catalogs:** use `HttpSkillSource` for a catalog that exposes `GET /skills`
+  and `GET /skills/:slug`. See `apps/examples/skill-catalog-host`.
+  HTTP catalogs should return raw template contents; `HttpSkillSource` renders
+  placeholders locally so agent context and secrets do not have to be sent to the
+  catalog host.
+- **Install policy:** implement `SkillInstallPolicy` when the app needs to allow,
+  deny, or redirect a requested install before fetching and applying files.
 
 ## Out of scope
 
-- **Entitlements and pricing.** The OSS runtime does not decide whether an agent is *allowed* to install a given skill. That's a commercial concern and sits in a separate hosted service.
+- **Entitlements and pricing.** The OSS runtime ships an allow-all install policy.
+  Commercial entitlement checks sit in a separate hosted service and plug into
+  `SkillInstallPolicy`.
 - **Runtime sandboxing.** Skills are plain data. If a skill's instructions tell an agent to call an external API, that call happens through the agent's tool layer, which has its own auth and guardrails.
 
 ## Status

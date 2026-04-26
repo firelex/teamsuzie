@@ -1,12 +1,10 @@
 # Quickstart
 
-> **v0.1 note:** platform services (steps 1–4) build, test, and run today — `pnpm install && pnpm -r build && pnpm -r test` is green, and the dev scripts below start real services. Steps 5–6 describe the admin UI and the demo agent, which land at v0.3 (tracked in [ROADMAP.md](ROADMAP.md)). Until then, build against the REST APIs directly.
-
 Gets you from zero to a running agent hitting a scoped knowledge base with an approval queue in front of it.
 
 ## Prerequisites
 
-- Node 20+
+- Node 22+
 - pnpm 9+
 - Docker + Docker Compose
 - ~8 GB free RAM (Milvus + Neo4j are not light)
@@ -50,7 +48,7 @@ pnpm dev:auth         # :3005
 pnpm dev:llm-proxy    # :4000
 pnpm dev:vector-db    # :3006
 pnpm dev:graph-db     # :3007
-pnpm dev:admin        # :3008
+pnpm dev:admin        # API :3008, UI :5175
 ```
 
 ### Optional: get a bearer token for a mobile / Flutter / standalone client
@@ -75,9 +73,9 @@ That returns a one-time `access_token` you can use as:
 Authorization: Bearer <token>
 ```
 
-## 5. Create an org and an agent *(v0.3)*
+## 5. Create an org and an agent
 
-Open the admin UI at [http://localhost:3008](http://localhost:3008). Sign up with any email (no email verification in OSS dev mode). Create an org, then create an agent — copy the API key it gives you.
+Open the admin UI at [http://localhost:5175](http://localhost:5175). Sign in with the demo credentials shown on the login page, or sign up with any email in OSS dev mode. Create an agent and copy the API key it gives you.
 
 ## Troubleshooting
 

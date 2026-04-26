@@ -53,7 +53,7 @@ Four templates live in `apps/starters/`. Copy one, rename it, and make it yours.
 | A chat app on an **OpenClaw agent runtime** (server-side session continuity, runtime-managed tool calls, addressable agent identity) | [`starter-chat-openclaw`](apps/starters/starter-chat-openclaw) | Pick this when you want the agent loop owned by [OpenClaw](https://github.com/openclaw) instead of by your app. |
 | An **internal tool / ops console** (Postgres-backed tables, auth-guarded pages, approval-gated mutations) | [`starter-ops-console`](apps/starters/starter-ops-console) | Pick this when your app is mostly a tool. Destructive actions are routed through the approval queue by default. Add a chat surface yourself if you want one. |
 
-The first three are Express + Vite + React. `starter-chat-vercel` is Next.js. All meant to be copied and extended.
+`starter-chat`, `starter-chat-openclaw`, and `starter-ops-console` are Express + Vite + React. `starter-chat-vercel` is Next.js. All are meant to be copied and extended.
 
 ### 4. Pick a backend
 
@@ -109,99 +109,135 @@ Copy any prompt below into your coding assistant inside this repo, then edit the
 
 > **What the starters include vs. what your assistant builds.** The starters give you a complete chat shell (streaming, sessions, UI), the tool-use loop in `starter-chat`, and approval-queue integration in `starter-ops-console`. Anything that calls a *specific* service — vector-db, graph-db, pptx-agent, xlsx-agent, an external API — is your assistant's job to wire up as a tool or a backend route. That's by design: the starters are an honest baseline; the pillars are servers; the assistant glues them together for *your* use case.
 
-#### 1. Customer-support chatbot &nbsp;·&nbsp; *starter-chat · KB · approval*
+#### 1. Warranty triage copilot &nbsp;·&nbsp; *starter-chat · KB · approval*
 
 ```
-Build a customer-support chatbot using starter-chat. Load my pricing,
-refund, and shipping policies into the scoped knowledge base. When the
-bot can't answer confidently, route a "human follow-up" action through
-the approval queue. Test the golden path locally before anything else.
+Build a warranty triage copilot on starter-chat for a hardware company.
+It should ask for product model, purchase date, symptoms, photos link,
+and country. It answers policy questions from a scoped KB, classifies
+the case as covered / not covered / needs human review, and drafts the
+customer reply.
+
+Never promise replacement or refund automatically. Any "approve claim"
+or "deny claim" action must go through the approval queue with the
+evidence visible. Add one happy-path test and one "missing purchase
+date" edge case.
 ```
 
-#### 2. Sales-research agent &nbsp;·&nbsp; *starter-chat-openclaw · approval · LLM proxy*
+#### 2. Founder sales-desk agent &nbsp;·&nbsp; *starter-chat-openclaw · approval · LLM proxy*
 
 ```
-Turn starter-chat-openclaw into a sales-research agent. Given a company
-name, it pulls basic firmographics, drafts a personalized outreach
-email, and routes every outbound email through the approval queue —
-nothing sends without my OK. Use the LLM proxy so I can see token
-usage per session.
+Turn starter-chat-openclaw into a founder sales-desk agent. Given a
+company URL, it builds a one-page account brief: what they sell, likely
+buyer, relevant trigger, risks, and a first email in my voice. Store the
+brief as a text artifact.
+
+Do not send email. Propose a send action through the approval queue,
+including subject, body, recipient, and the facts used. Use the LLM
+proxy so token usage appears in admin activity.
 ```
 
-#### 3. Meeting-notes assistant &nbsp;·&nbsp; *starter-chat · vector + graph KB*
+#### 3. Board-meeting memory &nbsp;·&nbsp; *starter-chat · vector + graph KB*
 
 ```
-Build a meeting-notes assistant on starter-chat. I paste a transcript;
-it produces an action-item summary and saves transcript + summary into
-the scoped knowledge base. Later, I should be able to ask "what did we
-decide about X last month?" and get a grounded answer with citations.
+Build a board-meeting memory app on starter-chat. I paste a transcript;
+it extracts decisions, risks, owners, dates, and open questions. Save
+the transcript chunks to the vector KB and the people/projects/decisions
+relationships to the graph KB.
+
+Later I should be able to ask "what did we decide about pricing?" or
+"which risks has Sarah owned?" and get a grounded answer with citations
+and relationship evidence. Add a tiny seeded transcript fixture.
 ```
 
-#### 4. Internal HR helpdesk &nbsp;·&nbsp; *starter-chat · KB · approval*
+#### 4. Policy desk with escalation &nbsp;·&nbsp; *starter-chat · KB · approval*
 
 ```
-Make an internal HR assistant on starter-chat. It answers policy
-questions from a knowledge base I'll populate (handbook, benefits,
-PTO rules). It can also file time-off requests — but every request
-must go through the approval queue before it's recorded.
+Make an internal policy desk on starter-chat for HR + finance questions.
+Load handbook, expenses, travel, and PTO docs into the scoped KB. The
+assistant must answer with the exact source section it relied on and say
+"I don't know" if the KB doesn't cover it.
+
+For expense exceptions and PTO requests, create an approval item instead
+of recording anything directly. Include requester, policy section,
+amount/dates, and rationale in the approval payload.
 ```
 
-#### 5. PR review bot &nbsp;·&nbsp; *starter-chat-openclaw · approval*
+#### 5. Release-risk reviewer &nbsp;·&nbsp; *starter-chat-openclaw · approval*
 
 ```
-Build a PR review bot using starter-chat-openclaw. Given a GitHub PR
-URL, it fetches the diff, summarizes intent, flags risks (security,
-perf, missing tests), and proposes review comments. Posting the
-comments to GitHub goes through the approval queue — never auto-post.
+Build a release-risk reviewer using starter-chat-openclaw. Given a
+GitHub PR URL and target release date, it fetches the diff, summarizes
+intent, flags security/perf/migration/test risks, and produces a
+"ship / hold / needs owner" recommendation.
+
+It may draft GitHub review comments, but posting comments must go
+through the approval queue. Add a local fake-diff fixture so the review
+logic can be tested without hitting GitHub.
 ```
 
-#### 6. Recruiter pipeline tool &nbsp;·&nbsp; *starter-ops-console · approval*
+#### 6. Candidate debrief console &nbsp;·&nbsp; *starter-ops-console · approval*
 
 ```
-Build a recruiter pipeline tool from starter-ops-console. Page 1: a
-candidates table backed by Postgres (name, role, stage, last contact).
-Page 2: a candidate detail view with an agent drawer that drafts
-outreach emails. Sending emails goes through the approval queue.
+Build a candidate debrief console from starter-ops-console. Page 1 is a
+candidate table backed by Postgres: role, stage, score, next step, last
+contact. Page 2 shows interview notes, concerns, strengths, and a chat
+drawer that drafts follow-up emails and structured interviewer summaries.
+
+No candidate rejection or offer email can be sent directly. Route it
+through the approval queue and show the exact message to the approver.
 ```
 
-#### 7. SQL analytics assistant &nbsp;·&nbsp; *starter-ops-console · approval gating*
+#### 7. Finance ops SQL copilot &nbsp;·&nbsp; *starter-ops-console · approval gating*
 
 ```
-Build a SQL analytics assistant on starter-ops-console for a Postgres
-DB I'll connect. SELECT queries run directly. Anything that mutates
-data (INSERT/UPDATE/DELETE/DDL) must go through the approval queue
-with the SQL diff visible to the approver.
+Build a finance ops SQL copilot on starter-ops-console for a Postgres DB
+I'll connect. It should answer questions like "which invoices are 30+
+days overdue?" and render results as a table with saved query history.
+
+SELECT queries can run directly. INSERT/UPDATE/DELETE/DDL must become an
+approval item with the SQL, expected row count, rollback SQL, and a plain
+English explanation. Never execute mutations before approval.
 ```
 
-#### 8. Document research agent &nbsp;·&nbsp; *starter-chat · vector + graph KB*
+#### 8. Contract red-flag desk &nbsp;·&nbsp; *starter-chat · vector + graph KB*
 
 ```
-Build a research agent on starter-chat. I'll upload a folder of PDFs
-(papers, internal docs). Index them into the vector KB and extract
-entity relationships into the graph KB. The agent answers questions
-using both, and shows which docs and which relationships it used.
+Build a contract red-flag desk on starter-chat. I paste contract text or
+upload extracted text files. It identifies parties, dates, renewal terms,
+termination rights, payment obligations, liability caps, assignment
+limits, and unusual clauses.
+
+Store clause chunks in the vector KB and party/obligation/date
+relationships in the graph KB. It must label output as review support,
+not legal advice, and cite the exact clauses it used.
 ```
 
-#### 9. Slide-deck generator &nbsp;·&nbsp; *starter-chat · pptx-agent service · tool use*
+#### 9. Investor update deck builder &nbsp;·&nbsp; *starter-chat · pptx-agent service · tool use*
 
 ```
-Build a slide-deck generator on starter-chat. I describe a deck
-(audience, key points); it drafts an outline, lets me iterate, and
-once I sign off, generates a .pptx via the pptx-agent service
-(running on :3009).
+Build an investor update deck builder on starter-chat. I paste monthly
+metrics, wins, risks, asks, and narrative notes. The agent drafts a
+7-slide outline: title, KPI snapshot, growth drivers, product progress,
+customer proof, risks, asks.
+
+Let me edit the outline in chat. Only after I approve the outline should
+it call the pptx-agent service running on :3009 to generate the .pptx.
 
 Wire pptx-agent in as a tool on starter-chat's tool-use loop —
 pptx-agent is a separate HTTP service, not built into the starter.
 ```
 
-#### 10. Spreadsheet financial analyst &nbsp;·&nbsp; *starter-chat · xlsx-agent service · tool use · LLM proxy*
+#### 10. Cash runway analyst &nbsp;·&nbsp; *starter-chat · xlsx-agent service · tool use · LLM proxy*
 
 ```
-Build a financial-analysis assistant on starter-chat. I upload a CSV
-of transactions or a P&L; it answers questions about it and, on
-request, produces a formatted .xlsx with charts via the xlsx-agent
-service (running on :3012). Track LLM usage per session through the
-proxy.
+Build a cash runway analyst on starter-chat. I upload or paste monthly
+revenue, payroll, tools, contractors, and one-off expenses. It computes
+burn, runway, biggest cost movers, and "what if we cut X?" scenarios.
+
+On request, generate a formatted .xlsx with assumptions, monthly cash
+balance, charts, and scenario tabs via xlsx-agent running on :3012.
+Track LLM usage per session through the proxy.
 
 Wire xlsx-agent in as a tool on starter-chat's tool-use loop —
 xlsx-agent is a separate HTTP service, not built into the starter.

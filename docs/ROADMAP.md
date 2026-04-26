@@ -2,16 +2,16 @@
 
 Team Suzie OSS is an extraction from a working private codebase. The roadmap reflects what's already built and what's next.
 
-## v0.1 — Runnable foundations *(current)*
+## v1 — Runnable foundations *(current)*
 
-The pillars ship as runnable, tested TypeScript packages, plus a full admin control plane on top. Ten workspace projects build clean; package-level unit tests and a 52-test admin integration suite run on `pnpm -r test`.
+The pillars ship as runnable, tested TypeScript packages, plus a full admin control plane on top. Workspace projects build clean; package-level unit tests and a 61-test admin integration suite run on `pnpm -r test`.
 
 - [x] Repository structure and positioning docs
 - [x] MIT license, contributing guide, security policy
 - [x] Docker Compose for local infrastructure (Postgres, Redis, Milvus, Neo4j)
 - [x] `packages/types` — shared scope and agent context types
 - [x] `packages/shared-auth` — org/user/agent models, session auth, request-id middleware, upload-guard helpers, actor attribution (billing stripped)
-- [x] `packages/skills` — headless skill runtime with filesystem delivery
+- [x] `packages/skills` — headless skill runtime with filesystem, HTTP source, and install-policy seams
 - [x] `packages/approvals` — generic state machine with in-memory store
 - [x] `packages/db-client` — typed clients for vector-db and graph-db
 - [x] `packages/usage-tracker` — Redis-backed usage event publisher
@@ -23,10 +23,13 @@ The pillars ship as runnable, tested TypeScript packages, plus a full admin cont
 - [x] `apps/platform/graph-db` — Neo4j REST wrapper with scope support
 - [x] `apps/platform/admin` — full control plane (see below)
 - [x] `apps/starters/starter-chat` — generic OpenAI-compatible chat starter
+- [x] `apps/starters/starter-chat-vercel` — Next.js / Vercel-oriented chat starter
 - [x] `apps/starters/starter-chat-openclaw` — OpenClaw-oriented chat starter
 - [x] `apps/starters/starter-ops-console` — internal-tool / ops-console starter with approval-gated destructive actions
+- [x] `apps/examples/skill-catalog-host` — reference external skill catalog for `HttpSkillSource`
+- [x] Agent guidance files (`AGENTS.md` + focused docs) for coding-assistant workflows
 
-### Admin control plane (shipped across Phases 0–7)
+### Admin control plane (shipped across Phases 0–8)
 
 The admin app grew from "chat console" to a real control plane in seven phases. Each landed as a standalone commit with a README entry and is covered by the integration suite.
 
@@ -38,14 +41,15 @@ The admin app grew from "chat console" to a real control plane in seven phases. 
 - [x] **Phase 5** — tokens (multi-key per agent with scopes, user bearer tokens via shared-auth, cascade delete on agent removal)
 - [x] **Phase 6** — config surface (scoped resolution: `agent → user → org → global → default`, AES-256-GCM at rest, sensitive redaction on HTTP)
 - [x] **Phase 7** — activity & audit feed (paginated audit-log view, actor enrichment, recently-active agents)
+- [x] **Phase 8** — LLM usage ingest and usage summaries surfaced in activity
 
 ## v0.2 — Polish + external integrations
 
-- [ ] `apps/starters/starter-demo` — minimal example agent wired through the full stack
-- [ ] `llm-proxy` → admin activity integration (token counts and tool-call timelines in `/api/activity`; currently admin surfaces `audit_log` + `Agent.last_active_at` only)
-- [ ] `config-client` HTTP consumers exercised from at least one OSS service (admin reads config in-process today)
 - [ ] CI: lint + typecheck + admin integration suite green on fresh clone
+- [ ] Fresh-clone quickstart walkthrough recorded against macOS and Linux
+- [ ] `config-client` HTTP consumers exercised from at least one OSS service (admin reads config in-process today)
 - [ ] Skill authoring guide expanded in `docs/EXTENSION_MODEL.md`
+- [ ] Extract shared starter agent-loop package to remove duplication between `starter-chat` and `starter-chat-vercel`
 
 ## v0.3 — First-party skills breadth
 

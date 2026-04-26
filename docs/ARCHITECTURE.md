@@ -81,11 +81,43 @@ Skills are installed to an agent's *workspace* — a filesystem view the agent r
 
 The runtime provides:
 - **Discovery** — list available skills (locally shipped + community catalog).
+- **Source adapters** — normalize local folders, community catalogs, and hosted catalogs behind one `SkillSource` interface.
 - **Install / uninstall** — atomic workspace updates.
+- **Install policy hooks** — callers can allow, deny, or redirect an install before files are fetched or applied.
 - **Template injection** — fills skill templates with agent-scoped config.
 - **Workspace sync** — pushes changes into running agent containers (or notifies them).
 
 The runtime does **not** decide whether an agent is *allowed* to install a given skill. That's an entitlement question and lives outside OSS (in hosted Team Suzie).
+
+The OSS default install policy is permissive: if a skill source returns a bundle,
+the runtime can install it. Hosted Team Suzie replaces that policy with an
+entitlement-backed implementation and may expose a paid hosted source. The
+important boundary is that the open runtime understands source metadata and
+install decisions, but not Stripe, invoices, credits, or commercial account state.
+
+```text
+OSS skill runtime
+  SkillSource        -> list/fetch skill bundles
+  SkillInstallPolicy -> allow/deny/redirect install
+  SkillTarget        -> write rendered files to workspace
+
+Hosted Team Suzie
+  billing account -> payment status
+  entitlement service -> install/run decisions
+  hosted catalog -> signed paid/free skill bundles
+  managed APIs -> runtime enforcement for premium services
+```
+
+Paid skills should therefore be modeled as **hosted skill sources plus hosted
+entitlements**, not as billing-aware OSS templates. A self-hosted operator can
+configure a remote source, but the remote source decides what bundles it will
+serve to that caller. For premium managed services, hosted APIs should also
+check entitlement at execution time; install-time checks alone cannot prevent a
+downloaded `SKILL.md` from being copied.
+
+The repository includes `apps/examples/skill-catalog-host`, a tiny external
+catalog that serves `GET /skills` and `GET /skills/:slug`. It proves the remote
+source contract without adding billing simulation to OSS.
 
 ### 3. Approval queue (`packages/approvals`)
 
@@ -125,7 +157,7 @@ This is the chokepoint that makes per-agent / per-org cost visibility tractable.
 Explicit non-goals (these live in the commercial product):
 
 - **Billing.** No Stripe integration, no invoices, no credits, no BYOK management.
-- **Entitlements.** The OSS skill runtime has no concept of "paid skills." Install is install.
+- **Entitlements.** The OSS skill runtime exposes an install-policy hook, but ships no commercial entitlement engine. Install is allowed by default.
 - **Managed connectors.** OAuth adapters with hosted credentials for Gmail, Outlook, Jira, etc. OSS ships the interfaces; bring your own OAuth app.
 - **Deployment orchestration.** Kubernetes, staging/prod infra, customer onboarding — those are hosted ops concerns.
 

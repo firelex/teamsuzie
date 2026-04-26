@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AppShellContent,
+  Badge,
   Button,
   Card,
   CardContent,
@@ -414,6 +415,14 @@ export function AgentEditPage() {
                             <span className="block truncate font-medium">{skill.name}</span>
                             <span className="block truncate text-xs text-muted-foreground">
                               {skill.description || skill.slug}
+                            </span>
+                            <span className="mt-1 flex flex-wrap gap-1">
+                              <Badge variant="outline" className="font-mono text-[10px]">
+                                {skill.source_id}
+                              </Badge>
+                              <Badge variant={skill.access === 'paid' ? 'secondary' : 'outline'} className="text-[10px]">
+                                {skill.access}
+                              </Badge>
                             </span>
                           </span>
                         </label>
