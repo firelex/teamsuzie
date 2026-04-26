@@ -5,18 +5,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "cd ../../../packages/approvals && npx tsc && cd ../skills && npx tsc",
+    "predev": "cd ../../../packages/approvals && npx tsc && cd ../skills && npx tsc && cd ../agent-loop && npx tsc",
     "dev": "tsx watch src/index.ts & pnpm --filter @teamsuzie/starter-chat-client dev & wait",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "vitest run",
-    "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@teamsuzie/agent-loop": "workspace:*",
     "@teamsuzie/approvals": "workspace:*",
-    "@teamsuzie/skills": "workspace:*",
     "cors": "^2.8.5",
     "dotenv": "^16.6.0",
     "express": "^5.1.0"
@@ -26,8 +23,6 @@
     "@types/express": "^5.0.3",
     "@types/node": "^22.10.5",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3",
-    "vitest": "^4.0.18",
-    "zod": "^3.23.0"
+    "typescript": "^5.7.3"
   }
 }

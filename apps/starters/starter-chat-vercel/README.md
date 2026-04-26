@@ -127,9 +127,16 @@ The fastest path to making approvals durable on Vercel:
 
 Same shape applies to swapping `InMemoryApprovalStore` for any backend you prefer.
 
-## Known tech debt
+## Architecture
 
-This starter currently **duplicates** ~800 lines of agent-loop code (`chat-provider.ts`, `skills.ts`, `mcp.ts`, `tools/*`) that also live in [`starter-chat`](../starter-chat). The right move is to extract a `@teamsuzie/agent-loop` workspace package both starters depend on. That refactor is intentionally deferred — the duplication is visible and contained, and the Vercel-specific adaptations (no stdio, no filesystem skills, lazy module-scope bootstrap via `lib/runtime.ts`) are what justify the separate package today. Track this if you make changes to the loop in either starter.
+The agent-loop core (`runChatTurn`, skills loader, MCP client, built-in tools) lives in the `@teamsuzie/agent-loop` workspace package and is shared with [`starter-chat`](../starter-chat). This template only adds the Vercel-specific pieces:
+
+- `lib/config.ts` — env-var bindings (no `STARTER_CHAT_` prefix; this app is freestanding).
+- `lib/runtime.ts` — lazy module-scope bootstrap that survives warm restarts on a single function instance.
+- `app/api/*` — App Router route handlers wrapping the loop in SSE streaming responses.
+- `components/chat.tsx` — the `'use client'` chat UI.
+
+If you change the loop, change it in `packages/agent-loop` and rebuild — both starters pick it up.
 
 ## Tests
 

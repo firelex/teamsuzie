@@ -1,0 +1,36 @@
+{
+  "name": "@teamsuzie/agent-loop",
+  "version": "0.1.0",
+  "description": "Headless OpenAI tool-use loop with skills bridge and MCP client — shared by Team Suzie chat starters",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@teamsuzie/approvals": "workspace:*",
+    "@teamsuzie/skills": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.18",
+    "zod": "^3.23.0"
+  }
+}

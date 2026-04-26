@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { runChatTurn, type ChatMessage } from '@/lib/chat-provider';
+import { runChatTurn, type ChatMessage } from '@teamsuzie/agent-loop';
 import { config } from '@/lib/config';
 import { ensureBoot, getActiveTools, getSkillsState, getToolContext } from '@/lib/runtime';
 

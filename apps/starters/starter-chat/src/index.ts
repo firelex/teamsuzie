@@ -4,12 +4,19 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ApprovalQueue, InMemoryApprovalStore } from '@teamsuzie/approvals';
+import {
+  connectMcpServers,
+  loadSkills,
+  parseMcpConfigFile,
+  runChatTurn,
+  tools as builtInTools,
+  type AnyToolDefinition,
+  type ChatMessage,
+  type McpManager,
+  type SkillLoadResult,
+  type ToolContext,
+} from '@teamsuzie/agent-loop';
 import { config } from './config.js';
-import { runChatTurn, type ChatMessage } from './chat-provider.js';
-import { loadSkills, type SkillLoadResult } from './skills.js';
-import { connectMcpServers, parseMcpConfigFile, type McpManager } from './mcp.js';
-import { tools as builtInTools } from './tools/index.js';
-import type { AnyToolDefinition, ToolContext } from './tools/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistDir = path.resolve(__dirname, '../client/dist');

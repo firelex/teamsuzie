@@ -1,9 +1,15 @@
 import { ApprovalQueue, InMemoryApprovalStore } from '@teamsuzie/approvals';
+import {
+  connectMcpServers,
+  loadSkills,
+  parseMcpConfigText,
+  tools as builtInTools,
+  type AnyToolDefinition,
+  type McpManager,
+  type SkillLoadResult,
+  type ToolContext,
+} from '@teamsuzie/agent-loop';
 import { config } from './config';
-import { connectMcpServers, parseMcpConfigText, type McpManager } from './mcp';
-import { loadSkills, type SkillLoadResult } from './skills';
-import { tools as builtInTools } from './tools/index';
-import type { AnyToolDefinition, ToolContext } from './tools/index';
 
 /**
  * Module-scope state. Survives warm restarts inside one serverless instance,

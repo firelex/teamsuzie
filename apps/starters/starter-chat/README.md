@@ -165,14 +165,20 @@ Register dependencies your tool needs (queues, clients) in `ToolContext` and pas
 
 The two review endpoints are intentionally minimal — list and review-by-id. Build your own UI on top, or point at the admin app.
 
+## Architecture
+
+The agent-loop core — `runChatTurn`, the skills loader, the MCP client, and the built-in tools — lives in the `@teamsuzie/agent-loop` workspace package, shared with [`starter-chat-vercel`](../starter-chat-vercel). This starter is the Express + Vite + React shell wrapping it.
+
+If you change the loop, change it in `packages/agent-loop` and rebuild — both starters pick it up.
+
 ## Tests
 
 ```bash
-pnpm --filter @teamsuzie/starter-chat test
+pnpm --filter @teamsuzie/agent-loop test
 ```
 
-Three suites:
-- `tool-loop.test.ts` — tool-use loop end-to-end with stubbed model + vector-db, including the `propose_action` → approvals queue path and the unknown-tool error path.
+The full test suite (tool-use loop, skills bridge, MCP client) lives in `@teamsuzie/agent-loop`:
+- `tool-loop.test.ts` — tool-use loop end-to-end with stubbed model + vector-db.
 - `skills-bridge.test.ts` — `http_request` allow-list, skill loader (filesystem rendering + URL host derivation), and the bridge end-to-end (skill describes endpoint → model emits `http_request` → dispatch round-trips).
 - `mcp.test.ts` — config parsing (stdio + HTTP entries, conflict / invalid-name detection) and an in-memory MCP server end-to-end using `InMemoryTransport.createLinkedPair()` from the SDK.
 
