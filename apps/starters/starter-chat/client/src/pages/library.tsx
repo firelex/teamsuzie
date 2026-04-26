@@ -35,7 +35,7 @@ export function LibraryPage() {
           </PageHeaderDescription>
         </PageHeaderContent>
       </PageHeader>
-      <AppShellContent className="px-6 pb-12">
+      <AppShellContent className="px-6 pt-6 pb-12">
         <Tabs defaultValue="prompts">
           <TabsList>
             <TabsTrigger value="prompts">Prompts</TabsTrigger>

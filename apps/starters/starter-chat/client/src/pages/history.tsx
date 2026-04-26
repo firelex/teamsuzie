@@ -24,7 +24,7 @@ export function HistoryPage() {
           </PageHeaderDescription>
         </PageHeaderContent>
       </PageHeader>
-      <AppShellContent className="px-6 pb-12">
+      <AppShellContent className="px-6 pt-6 pb-12">
         <EmptyState>
           <EmptyStateTitle>No conversations yet</EmptyStateTitle>
           <EmptyStateDescription>
